@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, ArrowLeft, AlertCircle, Info } from "lucide-react";
-import { useDocumentsStore } from "@/store/documentsStore";
+import { useDocumentsStore, generateGrupoRegistro } from "@/store/documentsStore";
 import { DOCUMENT_MAP, COUNTRIES, DOCUMENT_STATUSES, AUTHORITY_TYPES } from "@/utils/constants";
 import { documentSchema } from "@/utils/validators";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,44 @@ import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { isBefore, startOfDay } from "date-fns";
 
-export default function DocumentFormView() {
+const MARITAL_STATUS_OPTIONS = [
+  "Soltero/a",
+  "Casado/a",
+  "Divorciado/a",
+  "Viudo/a",
+  "Unión Libre",
+];
+
+const GENDER_OPTIONS = [
+  "Masculino",
+  "Femenino",
+  "No binario",
+  "Otro",
+  "Prefiero no decir",
+];
+
+const STUDY_STATUS_OPTIONS = [
+  "Graduado",
+  "No Graduado",
+];
+
+const RELATION_WITH_PF_OPTIONS = [
+  "Punto Focal",
+  "Esposa",
+  "Esposo",
+  "Hijo/a",
+  "Madre",
+  "Padre",
+  "Hermano/a",
+  "Sobrino/a",
+  "Tío/a",
+  "Primo/a",
+  "Abuelo/a",
+  "Nieto/a",
+  "Otro familiar",
+];
+
+export default function IndividualFormView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { documents, addDocument, updateDocument } = useDocumentsStore();
@@ -25,13 +63,28 @@ export default function DocumentFormView() {
       paisEmision: "Perú",
       estatus: "Vigente",
       tipoAutoridad: "Government / Gobierno",
+      fechaNacimiento: null,
+      paisNacimiento: "Perú",
+      departamentoNacimiento: "",
+      fechaIngresoPais: null,
+      estadoCivil: "Soltero/a",
+      genero: "Masculino",
+      gradoEstudio: "",
+      estadoEstudios: "Graduado",
+      relacionConPF: "Punto Focal",
+      grupoRegistro: "",
     }
   });
 
   const watchCategoria = watch("categoriaDocumento");
   const watchTipo = watch("tipoDocumento");
   const watchEstatus = watch("estatus");
+  const watchRelation = watch("relacionConPF");
   const watchFechaVencimiento = watch("fechaVencimiento");
+
+  const existingGroupIds = useMemo(() => {
+    return [...new Set(documents.filter(doc => doc.grupoRegistro).map(doc => doc.grupoRegistro))];
+  }, [documents]);
 
   // Filter types based on category
   const availableTypes = useMemo(() => {
@@ -86,10 +139,18 @@ export default function DocumentFormView() {
   }, [watchFechaVencimiento, watchEstatus]);
 
   const onSubmit = (data) => {
-    // Clean up empty strings to null for dates
+    // Clean up empty strings to null for optional dates
     if (!data.fechaEmision) data.fechaEmision = null;
     if (!data.fechaVencimiento) data.fechaVencimiento = null;
-    
+    if (!data.fechaNacimiento) data.fechaNacimiento = null;
+    if (!data.fechaIngresoPais) data.fechaIngresoPais = null;
+
+    if (!data.relacionConPF) data.relacionConPF = "Punto Focal";
+    if (!data.grupoRegistro) data.grupoRegistro = null;
+    if (data.relacionConPF === "Punto Focal" && !data.grupoRegistro) {
+      data.grupoRegistro = generateGrupoRegistro();
+    }
+
     // If lost, clear expiry
     if (data.estatus === "Lost / Perdido") {
       data.fechaVencimiento = null;
@@ -113,7 +174,7 @@ export default function DocumentFormView() {
           Volver
         </Button>
         <h2 className="text-2xl font-bold font-serif">
-          {isEditing ? "Editar Documento" : "Registrar Nuevo Documento"}
+          {isEditing ? "Editar Registro de Individuos" : "Registrar Individuos"}
         </h2>
       </div>
 
@@ -121,11 +182,11 @@ export default function DocumentFormView() {
         {/* SECCIÓN A */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Sección A: Clasificación del Documento</CardTitle>
+            <CardTitle className="text-lg">Sección A: Clasificación del Individuo</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Categoría del Documento *</Label>
+              <Label>Categoría del Registro *</Label>
               <Controller
                 name="categoriaDocumento"
                 control={control}
@@ -140,7 +201,7 @@ export default function DocumentFormView() {
             </div>
 
             <div className="space-y-2">
-              <Label>Tipo de Documento *</Label>
+              <Label>Tipo de Registro *</Label>
               <Controller
                 name="tipoDocumento"
                 control={control}
@@ -166,11 +227,11 @@ export default function DocumentFormView() {
         {/* SECCIÓN B */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Sección B: Detalles del Documento</CardTitle>
+            <CardTitle className="text-lg">Sección B: Detalles del Individuo</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Nombre del Documento {mappingInfo?.nombreObligatorio ? "*" : ""}</Label>
+              <Label>Nombre del Registro {mappingInfo?.nombreObligatorio ? "*" : ""}</Label>
               <Input 
                 {...register("nombreDocumento")} 
                 placeholder={mappingInfo?.nombreSugerido || "Ej. Carné de identidad..."}
@@ -185,7 +246,7 @@ export default function DocumentFormView() {
             </div>
 
             <div className="space-y-2">
-              <Label>Estatus del Documento *</Label>
+              <Label>Estatus del Registro *</Label>
               <Controller
                 name="estatus"
                 control={control}
@@ -255,7 +316,126 @@ export default function DocumentFormView() {
         {/* SECCIÓN C */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Sección C: Metadatos Adicionales</CardTitle>
+            <CardTitle className="text-lg">Sección C: Datos del Titular</CardTitle>
+            <CardDescription>Información personal de la persona titular del registro.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Fecha de Nacimiento</Label>
+              <Input type="date" {...register("fechaNacimiento")} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>País de Nacimiento</Label>
+              <Controller
+                name="paisNacimiento"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Departamento de Nacimiento</Label>
+              <Input {...register("departamentoNacimiento")} placeholder="Ej. Lima" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha de ingreso al país</Label>
+              <Input type="date" {...register("fechaIngresoPais")} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estado civil</Label>
+              <Controller
+                name="estadoCivil"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    {MARITAL_STATUS_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Género</Label>
+              <Controller
+                name="genero"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    {GENDER_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Grado de estudio</Label>
+              <Input {...register("gradoEstudio")} placeholder="Ej. Licenciatura en Derecho" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estado de estudios</Label>
+              <Controller
+                name="estadoEstudios"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    {STUDY_STATUS_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Relación con el PF</Label>
+              <Controller
+                name="relacionConPF"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    {RELATION_WITH_PF_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                )}
+              />
+            </div>
+
+            {watchRelation === "Punto Focal" ? (
+              <div className="space-y-2 md:col-span-2">
+                <Label>ID de Registro de Individuos</Label>
+                <Input
+                  value={watch("grupoRegistro") || "Se generará automáticamente al guardar"}
+                  readOnly
+                />
+              </div>
+            ) : (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Grupo de Registro</Label>
+                <Controller
+                  name="grupoRegistro"
+                  control={control}
+                  render={({ field }) => (
+                    <Select {...field}>
+                      <option value="">Seleccione un grupo existente</option>
+                      {existingGroupIds.map(group => (
+                        <option key={group} value={group}>{group}</option>
+                      ))}
+                    </Select>
+                  )}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Sección D: Metadatos Adicionales</CardTitle>
             <CardDescription>Información complementaria del lugar de expedición.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -277,7 +457,7 @@ export default function DocumentFormView() {
           </Button>
           <Button type="submit">
             <Save className="w-4 h-4 mr-2" />
-            {isEditing ? "Guardar Cambios" : "Registrar Documento"}
+            {isEditing ? "Guardar Cambios" : "Registrar Individuos"}
           </Button>
         </div>
       </form>

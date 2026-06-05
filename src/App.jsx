@@ -3,9 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import DocumentList from './pages/DocumentList';
-import DocumentFormView from './pages/DocumentFormView';
-import DocumentDetail from './pages/DocumentDetail';
+import IndividualList from './pages/IndividualList';
+import IndividualFormView from './pages/IndividualFormView';
+import IndividualDetail from './pages/IndividualDetail';
+import GroupRegistry from './pages/GroupRegistry';
 import Settings from './pages/Settings';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -39,10 +40,11 @@ export default function App() {
         {/* Protected Routes using AppLayout */}
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/documents" element={<DocumentList />} />
-          <Route path="/documents/new" element={<DocumentFormView />} />
-          <Route path="/documents/edit/:id" element={<DocumentFormView />} />
-          <Route path="/documents/:id" element={<DocumentDetail />} />
+          <Route path="/documents" element={<IndividualList />} />
+          <Route path="/documents/new" element={<IndividualFormView />} />
+          <Route path="/documents/edit/:id" element={<IndividualFormView />} />
+          <Route path="/documents/:id" element={<IndividualDetail />} />
+          <Route path="/groups" element={<GroupRegistry />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         

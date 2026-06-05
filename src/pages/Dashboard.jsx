@@ -75,11 +75,11 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold font-serif tracking-tight">Panel Principal</h2>
-          <p className="text-muted-foreground mt-1">Resumen general de los registros documentales.</p>
+          <p className="text-muted-foreground mt-1">Resumen general del registro de individuos.</p>
         </div>
         <Button onClick={() => navigate("/documents/new")} size="lg" className="shadow-md">
           <FilePlus className="w-5 h-5 mr-2" />
-          Registrar Documento
+          Registrar Individuos
         </Button>
       </div>
 
@@ -128,18 +128,18 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard title="Total Registros" value={metrics.total} icon={FileText} colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" />
-        <MetricCard title="Documentos Vigentes" value={metrics.vigentes} icon={FileText} colorClass="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" />
-        <MetricCard title="Documentos Expirados" value={metrics.expirados} icon={AlertTriangle} colorClass="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" />
-        <MetricCard title="Documentos Perdidos" value={metrics.perdidos} icon={FileX} colorClass="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" />
+        <MetricCard title="Total Individuos" value={metrics.total} icon={FileText} colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" />
+        <MetricCard title="Individuos Vigentes" value={metrics.vigentes} icon={FileText} colorClass="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" />
+        <MetricCard title="Individuos Expirados" value={metrics.expirados} icon={AlertTriangle} colorClass="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" />
+        <MetricCard title="Individuos Perdidos" value={metrics.perdidos} icon={FileX} colorClass="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" />
       </div>
 
       {/* Recent Records */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
-            <CardTitle>Últimos 5 Registros</CardTitle>
-            <CardDescription>Documentos añadidos recientemente al sistema.</CardDescription>
+            <CardTitle>Últimos 5 Individuos</CardTitle>
+            <CardDescription>Individuos añadidos recientemente al sistema.</CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild>
             <Link to="/documents">
@@ -151,13 +151,13 @@ export default function Dashboard() {
           {last5.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="w-12 h-12 mx-auto text-muted/50 mb-3" />
-              <p>No hay documentos registrados aún.</p>
+              <p>No hay registros aún.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Documento</TableHead>
+                  <TableHead>Registro</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Vencimiento</TableHead>
                   <TableHead>Estatus</TableHead>

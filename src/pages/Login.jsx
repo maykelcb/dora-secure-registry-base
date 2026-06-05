@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Navigate } from "react-router-dom";
-import { Shield, ShieldAlert, Lock, AlertCircle } from "lucide-react";
+import { ShieldAlert, Lock, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,8 +86,8 @@ export default function Login() {
       <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl opacity-60"></div>
       
       <div className="text-center mb-8 z-10">
-        <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-4 border border-primary/20 shadow-inner">
-          <Shield className="w-8 h-8 text-primary" />
+        <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-4 border border-primary/20 shadow-inner overflow-hidden">
+          <img src="/logo.jpg" alt="Logo" className="w-10 h-10 object-contain" />
         </div>
         <h1 className="text-4xl font-serif font-bold text-slate-900 dark:text-white tracking-tight">DORA</h1>
         <p className="text-muted-foreground mt-2 font-medium">Document Registry & Archive</p>

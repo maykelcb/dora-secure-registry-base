@@ -5,6 +5,12 @@ import toast from "react-hot-toast";
 
 const STORAGE_KEY = "dora-encrypted-docs";
 
+export const generateGrupoRegistro = () => {
+  const year = new Date().getFullYear().toString().slice(-2);
+  const random = Math.floor(Math.random() * 100000000).toString().padStart(8, "0");
+  return `GR-${year}-${random}`;
+};
+
 export const useDocumentsStore = create((set, get) => ({
   documents: [],
   isLoading: false,
@@ -79,6 +85,12 @@ export const useDocumentsStore = create((set, get) => ({
 
   addDocument: (doc) => {
     const currentDocs = get().documents;
+    const grupoRegistro = doc.grupoRegistro
+      ? doc.grupoRegistro
+      : doc.relacionConPF === "Punto Focal"
+      ? generateGrupoRegistro()
+      : null;
+
     const docWithDates = {
       ...doc,
       id: crypto.randomUUID(),
@@ -86,6 +98,7 @@ export const useDocumentsStore = create((set, get) => ({
       modificadoEn: new Date().toISOString(),
       eliminado: false,
       eliminadoEn: null,
+      grupoRegistro,
     };
     docWithDates.checksum = generateChecksum(docWithDates);
     
@@ -98,9 +111,17 @@ export const useDocumentsStore = create((set, get) => ({
     const currentDocs = get().documents;
     const newDocs = currentDocs.map(doc => {
       if (doc.id === id) {
+        let grupoRegistro = updatedFields.grupoRegistro ?? doc.grupoRegistro ?? null;
+        const relacionConPF = updatedFields.relacionConPF ?? doc.relacionConPF;
+
+        if (relacionConPF === "Punto Focal" && !grupoRegistro) {
+          grupoRegistro = generateGrupoRegistro();
+        }
+
         const updatedDoc = {
           ...doc,
           ...updatedFields,
+          grupoRegistro,
           modificadoEn: new Date().toISOString(),
         };
         updatedDoc.checksum = generateChecksum(updatedDoc);

@@ -1,4 +1,4 @@
-import { LogOut, Moon, Sun, ShieldCheck } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -19,11 +19,10 @@ export default function Header() {
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6 shadow-sm z-10 relative">
       <div className="flex items-center md:hidden">
-        <ShieldCheck className="w-5 h-5 text-primary mr-2" />
+        <img src="/logo.jpg" alt="Logo" className="w-5 h-5 mr-2 object-contain" />
         <h1 className="text-xl font-bold font-serif text-primary">DORA</h1>
       </div>
       <div className="hidden md:flex items-center text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-1.5 rounded-full border border-green-200 dark:border-green-900">
-        <ShieldCheck className="w-4 h-4 mr-2" />
         Modo Seguro Offline Activo
       </div>
       <div className="flex items-center space-x-4">

@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { exportToExcel, exportToCSV } from "@/utils/exporters";
 
-export default function DocumentList() {
+export default function IndividualList() {
   const { documents, deleteDocument, loadDocuments } = useDocumentsStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstatus, setFilterEstatus] = useState("");
@@ -47,20 +47,20 @@ export default function DocumentList() {
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
 
   const handleDelete = (id) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este documento? Será enviado a la papelera.")) {
+    if (window.confirm("¿Estás seguro de que deseas eliminar este registro? Será enviado a la papelera.")) {
       deleteDocument(id);
     }
   };
 
   const handleExportExcel = () => {
     if (window.confirm("El archivo exportado NO estará encriptado. ¿Continuar?")) {
-      exportToExcel(filteredDocs, `registros_documentos_${format(new Date(), 'yyyy-MM-dd')}`);
+      exportToExcel(filteredDocs, `registros_individuales_${format(new Date(), 'yyyy-MM-dd')}`);
     }
   };
 
   const handleExportCSV = () => {
     if (window.confirm("El archivo exportado NO estará encriptado. ¿Continuar?")) {
-      exportToCSV(filteredDocs, `registros_documentos_${format(new Date(), 'yyyy-MM-dd')}`);
+      exportToCSV(filteredDocs, `registros_individuales_${format(new Date(), 'yyyy-MM-dd')}`);
     }
   };
 
@@ -68,7 +68,7 @@ export default function DocumentList() {
     <div className="space-y-6 animate-in fade-in duration-300 h-full flex flex-col">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold font-serif tracking-tight">Directorio de Documentos</h2>
+          <h2 className="text-3xl font-bold font-serif tracking-tight">Registro de Individuos</h2>
           <p className="text-muted-foreground mt-1">
             Total filtrados: {filteredDocs.length} de {activeDocs.length} registros
           </p>
@@ -82,7 +82,7 @@ export default function DocumentList() {
           </Button>
           <Button asChild>
             <Link to="/documents/new">
-              <Plus className="w-4 h-4 mr-2" /> Nuevo Registro
+              <Plus className="w-4 h-4 mr-2" /> Registrar Individuos
             </Link>
           </Button>
         </div>
@@ -114,7 +114,7 @@ export default function DocumentList() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>Nombre del Documento</TableHead>
+                <TableHead>Nombre del Registro</TableHead>
                 <TableHead>Número</TableHead>
                 <TableHead>Categoría</TableHead>
                 <TableHead>País</TableHead>

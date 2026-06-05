@@ -15,6 +15,16 @@ export const documentSchema = z.object({
   fechaVencimiento: z.string().optional().nullable(),
   lugarEmision: z.string().optional(),
   descripcion: z.string().optional(),
+  fechaNacimiento: z.string().optional().nullable(),
+  paisNacimiento: z.string().optional(),
+  departamentoNacimiento: z.string().optional(),
+  fechaIngresoPais: z.string().optional().nullable(),
+  estadoCivil: z.string().optional(),
+  genero: z.string().optional(),
+  gradoEstudio: z.string().optional(),
+  estadoEstudios: z.string().optional(),
+  relacionConPF: z.string().optional(),
+  grupoRegistro: z.string().optional(),
 }).superRefine((data, ctx) => {
   // Regla: Nombre de documento obligatorio para "Other documentation"
   if (data.categoriaDocumento.includes("Other documentation")) {

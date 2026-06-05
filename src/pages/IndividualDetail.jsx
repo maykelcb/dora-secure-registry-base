@@ -7,7 +7,7 @@ import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Building, Hash, FileText, Al
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 
-export default function DocumentDetail() {
+export default function IndividualDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { documents, deleteDocument } = useDocumentsStore();
@@ -18,14 +18,14 @@ export default function DocumentDetail() {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertTriangle className="w-12 h-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-medium">Documento no encontrado</h2>
+        <h2 className="text-xl font-medium">Registro no encontrado</h2>
         <Button className="mt-4" onClick={() => navigate("/documents")}>Volver al listado</Button>
       </div>
     );
   }
 
   const handleDelete = () => {
-    if (window.confirm("¿Estás seguro de que deseas enviar este documento a la papelera?")) {
+    if (window.confirm("¿Estás seguro de que deseas enviar este registro a la papelera?")) {
       deleteDocument(id);
       navigate("/documents");
     }
@@ -107,6 +107,27 @@ export default function DocumentDetail() {
               </h3>
               <p className="font-medium">{doc.tipoAutoridad}</p>
             </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Calendar className="w-4 h-4 mr-2" /> Fecha de Nacimiento
+              </h3>
+              <p className="font-medium">{doc.fechaNacimiento ? format(new Date(doc.fechaNacimiento), "dd/MM/yyyy") : "No especificada"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <MapPin className="w-4 h-4 mr-2" /> País / Departamento de Nacimiento
+              </h3>
+              <p className="font-medium">{doc.paisNacimiento || "No especificado"}{doc.departamentoNacimiento ? `, ${doc.departamentoNacimiento}` : ""}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Calendar className="w-4 h-4 mr-2" /> Fecha de ingreso al país
+              </h3>
+              <p className="font-medium">{doc.fechaIngresoPais ? format(new Date(doc.fechaIngresoPais), "dd/MM/yyyy") : "No especificada"}</p>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -135,7 +156,49 @@ export default function DocumentDetail() {
                 </p>
               </div>
             </div>
-            
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Building className="w-4 h-4 mr-2" /> Estado Civil
+              </h3>
+              <p className="font-medium">{doc.estadoCivil || "No especificado"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Building className="w-4 h-4 mr-2" /> Género
+              </h3>
+              <p className="font-medium">{doc.genero || "No especificado"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Building className="w-4 h-4 mr-2" /> Grado de estudio
+              </h3>
+              <p className="font-medium">{doc.gradoEstudio || "No especificado"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Building className="w-4 h-4 mr-2" /> Estado de estudios
+              </h3>
+              <p className="font-medium">{doc.estadoEstudios || "No especificado"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Building className="w-4 h-4 mr-2" /> Relación con el PF
+              </h3>
+              <p className="font-medium">{doc.relacionConPF || "Punto Focal"}</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <Hash className="w-4 h-4 mr-2" /> Grupo de Registro
+              </h3>
+              <p className="font-medium">{doc.grupoRegistro || "No asignado"}</p>
+            </div>
+
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Descripción / Comentarios</h3>
               <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border text-sm min-h-[60px]">
