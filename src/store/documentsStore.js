@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { encryptData, decryptData, generateChecksum, verifyChecksum } from "@/utils/crypto";
-import { useAuthStore } from "./authStore";
+import { getSystemEncryptionKey } from "./authStore";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import toast from "react-hot-toast";
 
 const STORAGE_KEY = "dora-encrypted-docs";
@@ -17,59 +18,103 @@ export const useDocumentsStore = create((set, get) => ({
   error: null,
   integrityWarning: false,
 
-  loadDocuments: () => {
-    const { encryptionKey } = useAuthStore.getState();
+  // ── Acción: Cargar documentos ──────────────────────────────────
+  loadDocuments: async () => {
+    const encryptionKey = getSystemEncryptionKey();
     if (!encryptionKey) return;
 
     set({ isLoading: true, error: null, integrityWarning: false });
-    
+
+    // 1. MODO LOCAL (LocalStorage)
+    if (!isSupabaseConfigured()) {
+      try {
+        const encryptedData = localStorage.getItem(STORAGE_KEY);
+        if (!encryptedData) {
+          set({ documents: [], isLoading: false });
+          return;
+        }
+
+        const decrypted = decryptData(encryptedData, encryptionKey);
+        if (!decrypted) {
+          set({ error: "Fallo al desencriptar los datos locales.", isLoading: false });
+          return;
+        }
+
+        let hasCorruptedData = false;
+        decrypted.forEach(doc => {
+          if (!verifyChecksum(doc)) {
+            hasCorruptedData = true;
+          }
+        });
+
+        set({ 
+          documents: decrypted, 
+          integrityWarning: hasCorruptedData,
+          isLoading: false 
+        });
+
+        if (hasCorruptedData) {
+          toast.error("Advertencia: Se detectó alteración en la integridad de algunos documentos locales.");
+        }
+      } catch (error) {
+        console.error(error);
+        set({ error: "Error crítico al cargar datos locales.", isLoading: false });
+      }
+      return;
+    }
+
+    // 2. MODO COMPARTIDO (Supabase)
     try {
-      const encryptedData = localStorage.getItem(STORAGE_KEY);
-      if (!encryptedData) {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
         set({ documents: [], isLoading: false });
         return;
       }
 
-      const decrypted = decryptData(encryptedData, encryptionKey);
-      
-      if (!decrypted) {
-        set({ error: "Fallo al desencriptar los datos. Contraseña incorrecta o datos corruptos.", isLoading: false });
-        return;
+      const decryptedDocs = [];
+      let hasCorruptedData = false;
+
+      for (const row of data) {
+        const decryptedDoc = decryptData(row.encrypted_data, encryptionKey);
+        if (decryptedDoc) {
+          // Asegurar que el estado "eliminado" de la fila coincida con el objeto desencriptado
+          decryptedDoc.eliminado = row.eliminado;
+          if (!verifyChecksum(decryptedDoc)) {
+            hasCorruptedData = true;
+          }
+          decryptedDocs.push(decryptedDoc);
+        } else {
+          hasCorruptedData = true;
+        }
       }
 
-      // Verify integrity
-      let hasCorruptedData = false;
-      const validDocs = decrypted.filter(doc => {
-        if (!verifyChecksum(doc)) {
-          hasCorruptedData = true;
-          return false; // Optional: filter out corrupted docs, or keep them and warn. We'll filter them out for safety, or we could just warn.
-          // Let's keep them but flag the warning
-        }
-        return true;
-      });
-
-      // Si queremos ser estrictos y descartar los corruptos, usamos validDocs. 
-      // Por ahora, usemos todos pero avisamos
       set({ 
-        documents: decrypted, 
+        documents: decryptedDocs, 
         integrityWarning: hasCorruptedData,
         isLoading: false 
       });
 
       if (hasCorruptedData) {
-        toast.error("Advertencia: Se detectó alteración en la integridad de algunos documentos.");
+        toast.error("Advertencia: Se detectó alteración en la integridad de algunos documentos de la base de datos.");
       }
-
     } catch (error) {
-      console.error(error);
-      set({ error: "Error crítico al cargar datos.", isLoading: false });
+      console.error("[Supabase] Load Error:", error);
+      set({ error: "Error al cargar documentos desde la base de datos central.", isLoading: false });
+      toast.error("Error al sincronizar datos con el servidor.");
     }
   },
 
+  // ── Acción: Guardar documentos (Solo usado en modo local fallback) ──
   saveDocuments: (newDocs) => {
-    const { encryptionKey } = useAuthStore.getState();
+    const encryptionKey = getSystemEncryptionKey();
     if (!encryptionKey) {
-      toast.error("Sesión no válida. No se pueden guardar datos.");
+      toast.error("Clave de sistema no configurada. No se pueden guardar datos.");
       return;
     }
 
@@ -83,8 +128,15 @@ export const useDocumentsStore = create((set, get) => ({
     }
   },
 
-  addDocument: (doc) => {
+  // ── Acción: Registrar un nuevo documento ───────────────────────
+  addDocument: async (doc) => {
     const currentDocs = get().documents;
+    const encryptionKey = getSystemEncryptionKey();
+    if (!encryptionKey) {
+      toast.error("Clave de sistema no configurada.");
+      return;
+    }
+
     const grupoRegistro = doc.grupoRegistro
       ? doc.grupoRegistro
       : doc.relacionConPF === "Punto Focal"
@@ -101,115 +153,290 @@ export const useDocumentsStore = create((set, get) => ({
       grupoRegistro,
     };
     docWithDates.checksum = generateChecksum(docWithDates);
-    
-    const newDocs = [docWithDates, ...currentDocs];
-    get().saveDocuments(newDocs);
-    toast.success("Documento registrado exitosamente");
-  },
 
-  updateDocument: (id, updatedFields) => {
-    const currentDocs = get().documents;
-    const newDocs = currentDocs.map(doc => {
-      if (doc.id === id) {
-        let grupoRegistro = updatedFields.grupoRegistro ?? doc.grupoRegistro ?? null;
-        const relacionConPF = updatedFields.relacionConPF ?? doc.relacionConPF;
-
-        if (relacionConPF === "Punto Focal" && !grupoRegistro) {
-          grupoRegistro = generateGrupoRegistro();
-        }
-
-        const updatedDoc = {
-          ...doc,
-          ...updatedFields,
-          grupoRegistro,
-          modificadoEn: new Date().toISOString(),
-        };
-        updatedDoc.checksum = generateChecksum(updatedDoc);
-        return updatedDoc;
-      }
-      return doc;
-    });
-    get().saveDocuments(newDocs);
-    toast.success("Documento actualizado exitosamente");
-  },
-
-  deleteDocument: (id, softDelete = true) => {
-    const currentDocs = get().documents;
-    
-    if (softDelete) {
-      const newDocs = currentDocs.map(doc => {
-        if (doc.id === id) {
-          const updatedDoc = {
-            ...doc,
-            eliminado: true,
-            eliminadoEn: new Date().toISOString(),
-            modificadoEn: new Date().toISOString(),
-          };
-          updatedDoc.checksum = generateChecksum(updatedDoc);
-          return updatedDoc;
-        }
-        return doc;
-      });
+    // 1. MODO LOCAL (LocalStorage)
+    if (!isSupabaseConfigured()) {
+      const newDocs = [docWithDates, ...currentDocs];
       get().saveDocuments(newDocs);
-      toast.success("Documento enviado a la papelera");
-    } else {
-      const newDocs = currentDocs.filter(doc => doc.id !== id);
-      get().saveDocuments(newDocs);
-      toast.success("Documento eliminado permanentemente");
+      toast.success("Documento registrado exitosamente (Local)");
+      return;
     }
-  },
 
-  restoreDocument: (id) => {
-    const currentDocs = get().documents;
-    const newDocs = currentDocs.map(doc => {
-      if (doc.id === id) {
-        const updatedDoc = {
-          ...doc,
-          eliminado: false,
-          eliminadoEn: null,
-          modificadoEn: new Date().toISOString(),
-        };
-        updatedDoc.checksum = generateChecksum(updatedDoc);
-        return updatedDoc;
-      }
-      return doc;
-    });
-    get().saveDocuments(newDocs);
-    toast.success("Documento restaurado exitosamente");
-  },
-
-  // Re-encripta todos los documentos con una nueva clave (cuando cambia la contraseña maestra)
-  reEncryptAllData: (newKey) => {
-    const currentDocs = get().documents;
+    // 2. MODO COMPARTIDO (Supabase)
     try {
-      const encrypted = encryptData(currentDocs, newKey);
-      localStorage.setItem(STORAGE_KEY, encrypted);
-      return true;
-    } catch (e) {
-      console.error(e);
-      return false;
+      const encrypted = encryptData(docWithDates, encryptionKey);
+      const { error } = await supabase
+        .from("documents")
+        .insert([
+          {
+            id: docWithDates.id,
+            encrypted_data: encrypted,
+            eliminado: false,
+            created_at: docWithDates.creadoEn
+          }
+        ]);
+
+      if (error) throw error;
+
+      set({ documents: [docWithDates, ...currentDocs] });
+      toast.success("Documento registrado exitosamente en la nube");
+    } catch (error) {
+      console.error("[Supabase] Add Error:", error);
+      toast.error("Error al guardar en la base de datos central.");
     }
   },
-  
-  // Carga e importa backup
-  importBackup: (backupDataStr, currentKey) => {
+
+  // ── Acción: Actualizar un documento existente ──────────────────
+  updateDocument: async (id, updatedFields) => {
+    const currentDocs = get().documents;
+    const encryptionKey = getSystemEncryptionKey();
+    if (!encryptionKey) {
+      toast.error("Clave de sistema no configurada.");
+      return;
+    }
+
+    const docToUpdate = currentDocs.find(d => d.id === id);
+    if (!docToUpdate) return;
+
+    let grupoRegistro = updatedFields.grupoRegistro ?? docToUpdate.grupoRegistro ?? null;
+    const relacionConPF = updatedFields.relacionConPF ?? docToUpdate.relacionConPF;
+
+    if (relacionConPF === "Punto Focal" && !grupoRegistro) {
+      grupoRegistro = generateGrupoRegistro();
+    }
+
+    const updatedDoc = {
+      ...docToUpdate,
+      ...updatedFields,
+      grupoRegistro,
+      modificadoEn: new Date().toISOString(),
+    };
+    updatedDoc.checksum = generateChecksum(updatedDoc);
+
+    // 1. MODO LOCAL (LocalStorage)
+    if (!isSupabaseConfigured()) {
+      const newDocs = currentDocs.map(d => d.id === id ? updatedDoc : d);
+      get().saveDocuments(newDocs);
+      toast.success("Documento actualizado exitosamente (Local)");
+      return;
+    }
+
+    // 2. MODO COMPARTIDO (Supabase)
+    try {
+      const encrypted = encryptData(updatedDoc, encryptionKey);
+      const { error } = await supabase
+        .from("documents")
+        .update({
+          encrypted_data: encrypted,
+          updated_at: updatedDoc.modificadoEn
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set({ documents: currentDocs.map(d => d.id === id ? updatedDoc : d) });
+      toast.success("Documento actualizado exitosamente en la nube");
+    } catch (error) {
+      console.error("[Supabase] Update Error:", error);
+      toast.error("Error al actualizar en la base de datos central.");
+    }
+  },
+
+  // ── Acción: Eliminar un documento (Físico o Lógico) ───────────
+  deleteDocument: async (id, softDelete = true) => {
+    const currentDocs = get().documents;
+    const encryptionKey = getSystemEncryptionKey();
+    if (!encryptionKey) {
+      toast.error("Clave de sistema no configurada.");
+      return;
+    }
+
+    const docToDelete = currentDocs.find(d => d.id === id);
+    if (!docToDelete) return;
+
+    // 1. MODO LOCAL (LocalStorage)
+    if (!isSupabaseConfigured()) {
+      if (softDelete) {
+        const updatedDoc = {
+          ...docToDelete,
+          eliminado: true,
+          eliminadoEn: new Date().toISOString(),
+          modificadoEn: new Date().toISOString(),
+        };
+        updatedDoc.checksum = generateChecksum(updatedDoc);
+        const newDocs = currentDocs.map(d => d.id === id ? updatedDoc : d);
+        get().saveDocuments(newDocs);
+        toast.success("Documento enviado a la papelera (Local)");
+      } else {
+        const newDocs = currentDocs.filter(d => d.id !== id);
+        get().saveDocuments(newDocs);
+        toast.success("Documento eliminado permanentemente (Local)");
+      }
+      return;
+    }
+
+    // 2. MODO COMPARTIDO (Supabase)
+    try {
+      if (softDelete) {
+        const updatedDoc = {
+          ...docToDelete,
+          eliminado: true,
+          eliminadoEn: new Date().toISOString(),
+          modificadoEn: new Date().toISOString(),
+        };
+        updatedDoc.checksum = generateChecksum(updatedDoc);
+        const encrypted = encryptData(updatedDoc, encryptionKey);
+
+        const { error } = await supabase
+          .from("documents")
+          .update({
+            encrypted_data: encrypted,
+            eliminado: true,
+            updated_at: updatedDoc.modificadoEn
+          })
+          .eq("id", id);
+
+        if (error) throw error;
+
+        set({ documents: currentDocs.map(d => d.id === id ? updatedDoc : d) });
+        toast.success("Documento enviado a la papelera en la nube");
+      } else {
+        const { error } = await supabase
+          .from("documents")
+          .delete()
+          .eq("id", id);
+
+        if (error) throw error;
+
+        set({ documents: currentDocs.filter(d => d.id !== id) });
+        toast.success("Documento eliminado permanentemente de la nube");
+      }
+    } catch (error) {
+      console.error("[Supabase] Delete Error:", error);
+      toast.error("Error al eliminar en la base de datos central.");
+    }
+  },
+
+  // ── Acción: Restaurar documento de la papelera ─────────────────
+  restoreDocument: async (id) => {
+    const currentDocs = get().documents;
+    const encryptionKey = getSystemEncryptionKey();
+    if (!encryptionKey) {
+      toast.error("Clave de sistema no configurada.");
+      return;
+    }
+
+    const docToRestore = currentDocs.find(d => d.id === id);
+    if (!docToRestore) return;
+
+    const updatedDoc = {
+      ...docToRestore,
+      eliminado: false,
+      eliminadoEn: null,
+      modificadoEn: new Date().toISOString(),
+    };
+    updatedDoc.checksum = generateChecksum(updatedDoc);
+
+    // 1. MODO LOCAL (LocalStorage)
+    if (!isSupabaseConfigured()) {
+      const newDocs = currentDocs.map(d => d.id === id ? updatedDoc : d);
+      get().saveDocuments(newDocs);
+      toast.success("Documento restaurado exitosamente (Local)");
+      return;
+    }
+
+    // 2. MODO COMPARTIDO (Supabase)
+    try {
+      const encrypted = encryptData(updatedDoc, encryptionKey);
+      const { error } = await supabase
+        .from("documents")
+        .update({
+          encrypted_data: encrypted,
+          eliminado: false,
+          updated_at: updatedDoc.modificadoEn
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set({ documents: currentDocs.map(d => d.id === id ? updatedDoc : d) });
+      toast.success("Documento restaurado exitosamente en la nube");
+    } catch (error) {
+      console.error("[Supabase] Restore Error:", error);
+      toast.error("Error al restaurar en la base de datos central.");
+    }
+  },
+
+  // ── Acción: Cargar e importar una copia de seguridad ───────────
+  importBackup: async (backupDataStr, currentKey) => {
     try {
       const decrypted = decryptData(backupDataStr, currentKey);
-      if (decrypted && Array.isArray(decrypted)) {
+      if (!decrypted || !Array.isArray(decrypted)) {
+        return false;
+      }
+
+      // 1. MODO LOCAL (LocalStorage)
+      if (!isSupabaseConfigured()) {
         get().saveDocuments(decrypted);
         return true;
       }
-      return false;
+
+      // 2. MODO COMPARTIDO (Supabase)
+      set({ isLoading: true });
+      const rows = decrypted.map(doc => {
+        const encrypted = encryptData(doc, currentKey);
+        return {
+          id: doc.id || crypto.randomUUID(),
+          encrypted_data: encrypted,
+          eliminado: doc.eliminado || false,
+          created_at: doc.creadoEn || new Date().toISOString()
+        };
+      });
+
+      // Primero limpiamos la base de datos (con una consulta genérica)
+      const { error: deleteError } = await supabase
+        .from("documents")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await supabase
+        .from("documents")
+        .insert(rows);
+      
+      if (insertError) throw insertError;
+
+      set({ documents: decrypted, isLoading: false });
+      return true;
     } catch (e) {
+      console.error("[Supabase] Import Error:", e);
+      set({ isLoading: false });
       return false;
     }
   },
-  
-  // Limpia absolutamente todo
-  resetSystem: () => {
+
+  // ── Acción: Restablecer por completo el sistema ─────────────────
+  resetSystem: async () => {
+    // 1. MODO LOCAL (LocalStorage)
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem("dora-auth-hash");
     localStorage.removeItem("dora-auth-salt");
+
+    // 2. MODO COMPARTIDO (Supabase)
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from("documents")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error("[Supabase] Reset Error:", err);
+      }
+    }
+
     set({ documents: [] });
   }
 }));

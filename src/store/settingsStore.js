@@ -5,7 +5,7 @@ export const useSettingsStore = create(
   persist(
     (set) => ({
       theme: "light",
-      timeoutMinutes: 30, // Default to 30 mins
+      timeoutMinutes: 720, // Default to 12 hours (720 mins)
       toggleTheme: () => set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
       setTheme: (theme) => set({ theme }),
       setTimeoutMinutes: (minutes) => set({ timeoutMinutes: minutes }),

@@ -10,10 +10,17 @@ import GroupRegistry from './pages/GroupRegistry';
 import Settings from './pages/Settings';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import SessionBarrier from './components/SessionBarrier';
 
 // Main App component orchestrating routes
 export default function App() {
   const checkSession = useAuthStore((state) => state.checkSession);
+  const checkSessionConflict = useAuthStore((state) => state.checkSessionConflict);
+
+  // Verificar conflicto de sesión al montar la app
+  React.useEffect(() => {
+    checkSessionConflict();
+  }, [checkSessionConflict]);
 
   // Simple global click listener to extend session if active
   React.useEffect(() => {
@@ -34,6 +41,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <SessionBarrier />
       <Routes>
         <Route path="/login" element={<Login />} />
         

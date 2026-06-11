@@ -1,63 +1,24 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useAuthStore } from "@/store/authStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { useAuthStore, getSystemEncryptionKey } from "@/store/authStore";
 import { useDocumentsStore } from "@/store/documentsStore";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Lock, Clock, Download, Upload, Trash2, RefreshCcw, ShieldAlert, RotateCcw } from "lucide-react";
+import { ShieldCheck, Clock, Download, Upload, Trash2, ShieldAlert, RotateCcw, Mail, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Requerido"),
-  newPassword: z.string()
-    .min(8, "Mínimo 8 caracteres")
-    .regex(/[0-9]/, "Debe contener al menos 1 número")
-    .regex(/[^A-Za-z0-9]/, "Debe contener al menos 1 carácter especial"),
-  confirmPassword: z.string()
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Las contraseñas no coinciden",
-  path: ["confirmPassword"],
-});
 
 export default function Settings() {
   const { timeoutMinutes, setTimeoutMinutes } = useSettingsStore();
-  const { updatePasswordData, login, encryptionKey, logout } = useAuthStore();
-  const { documents, reEncryptAllData, importBackup, resetSystem, restoreDocument, deleteDocument } = useDocumentsStore();
+  const { logout, currentEmail } = useAuthStore();
+  const { documents, importBackup, resetSystem, restoreDocument, deleteDocument } = useDocumentsStore();
 
   const [resetConfirm, setResetConfirm] = useState("");
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-
-  const { register, handleSubmit, reset: resetPasswordForm, formState: { errors } } = useForm({
-    resolver: zodResolver(passwordSchema)
-  });
-
-  const onChangePassword = (data) => {
-    // Verificamos contraseña actual
-    const check = login(data.currentPassword);
-    if (!check.success) {
-      toast.error("Contraseña actual incorrecta");
-      return;
-    }
-
-    // Actualizamos
-    const newKey = updatePasswordData(data.newPassword);
-    const success = reEncryptAllData(newKey);
-    
-    if (success) {
-      toast.success("Contraseña cambiada exitosamente. Datos re-encriptados.");
-      resetPasswordForm();
-    } else {
-      toast.error("Error al re-encriptar los datos.");
-    }
-  };
 
   const handleExportBackup = () => {
     // Exportamos encriptado directamente del localStorage
@@ -85,15 +46,15 @@ export default function Settings() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target.result;
-      const success = importBackup(content, encryptionKey);
+      const success = importBackup(content, getSystemEncryptionKey());
       if (success) {
         toast.success("Datos importados y restaurados correctamente");
       } else {
-        toast.error("Fallo al importar. Asegúrate de que la copia pertenezca a esta misma contraseña maestra.");
+        toast.error("Fallo al importar. Asegúrate de que la copia sea de este mismo sistema.");
       }
     };
     reader.readAsText(file);
-    e.target.value = ""; // Reset input
+    e.target.value = "";
   };
 
   const handleResetSystem = () => {
@@ -115,49 +76,44 @@ export default function Settings() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Seguridad */}
+        {/* Seguridad y Sesión */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
-              <Lock className="w-5 h-5 mr-2 text-primary" /> Seguridad
+              <ShieldCheck className="w-5 h-5 mr-2 text-primary" /> Sesión Activa
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onChangePassword)} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Contraseña Actual</Label>
-                <Input type="password" {...register("currentPassword")} />
-                {errors.currentPassword && <p className="text-xs text-destructive">{errors.currentPassword.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Nueva Contraseña</Label>
-                <Input type="password" {...register("newPassword")} />
-                {errors.newPassword && <p className="text-xs text-destructive">{errors.newPassword.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmar Nueva Contraseña</Label>
-                <Input type="password" {...register("confirmPassword")} />
-                {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
-              </div>
-              <Button type="submit" className="w-full">Actualizar Contraseña y Re-encriptar</Button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-muted-foreground" />
-                  <Label>Tiempo de inactividad (cierre automático)</Label>
+          <CardContent className="space-y-6">
+            {/* Usuario actual */}
+            {currentEmail && (
+              <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ background: "hsl(var(--primary) / 0.05)", borderColor: "hsl(var(--primary) / 0.2)" }}>
+                <div className="flex items-center justify-center w-9 h-9 rounded-full shrink-0" style={{ background: "hsl(var(--primary) / 0.15)" }}>
+                  <Mail className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                 </div>
-                <Select 
-                  value={timeoutMinutes} 
-                  onChange={(e) => setTimeoutMinutes(Number(e.target.value))}
-                  className="w-32"
-                >
-                  <option value={15}>15 minutos</option>
-                  <option value={30}>30 minutos</option>
-                  <option value={60}>60 minutos</option>
-                </Select>
+                <div>
+                  <p className="text-xs text-muted-foreground">Sesión iniciada como</p>
+                  <p className="text-sm font-semibold">{currentEmail}</p>
+                </div>
               </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                <Label>Tiempo de inactividad (cierre automático)</Label>
+              </div>
+              <Select
+                value={timeoutMinutes}
+                onChange={(e) => setTimeoutMinutes(Number(e.target.value))}
+                className="w-32"
+              >
+                <option value={15}>15 minutos</option>
+                <option value={30}>30 minutos</option>
+                <option value={60}>1 hora</option>
+                <option value={240}>4 horas</option>
+                <option value={480}>8 horas</option>
+                <option value={720}>12 horas</option>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -169,7 +125,7 @@ export default function Settings() {
               <Download className="w-5 h-5 mr-2 text-primary" /> Respaldos y Datos
             </CardTitle>
             <CardDescription>
-              Las copias de seguridad se exportan totalmente encriptadas.
+              Las copias de seguridad se exportan encriptadas con la clave del sistema.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -208,7 +164,7 @@ export default function Settings() {
                       Peligro: Borrado Irreversible
                     </DialogTitle>
                     <DialogDescription>
-                      Esta acción eliminará todos los documentos, la clave maestra y la configuración. No podrás recuperar los datos a menos que tengas un respaldo.
+                      Esta acción eliminará todos los documentos y la configuración del sistema. No podrás recuperar los datos a menos que tengas un respaldo.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
