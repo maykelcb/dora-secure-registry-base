@@ -31,11 +31,38 @@ export function getSystemEncryptionKey() {
   return "dora-dev-fallback-key-2024-insegura";
 }
 
+const getInitialAuth = () => {
+  if (typeof window === "undefined") return { isAuthenticated: false, currentEmail: null, sessionExpiresAt: null };
+  const activeSessionStr = localStorage.getItem("dora-active-session");
+  if (!activeSessionStr) return { isAuthenticated: false, currentEmail: null, sessionExpiresAt: null };
+
+  try {
+    const activeSession = JSON.parse(activeSessionStr);
+    if (activeSession.email && activeSession.activeTabId === tabId) {
+      // Verificar si no ha expirado
+      if (activeSession.expiresAt && Date.now() > activeSession.expiresAt) {
+        localStorage.removeItem("dora-active-session");
+        return { isAuthenticated: false, currentEmail: null, sessionExpiresAt: null };
+      }
+      return {
+        isAuthenticated: true,
+        currentEmail: activeSession.email,
+        sessionExpiresAt: activeSession.expiresAt || null
+      };
+    }
+  } catch {
+    // ignorar
+  }
+  return { isAuthenticated: false, currentEmail: null, sessionExpiresAt: null };
+};
+
+const initialAuth = getInitialAuth();
+
 export const useAuthStore = create((set, get) => ({
   // ── Estado de sesión ──────────────────────────────────────────
-  isAuthenticated: false,
-  currentEmail: null,
-  sessionExpiresAt: null,
+  isAuthenticated: initialAuth.isAuthenticated,
+  currentEmail: initialAuth.currentEmail,
+  sessionExpiresAt: initialAuth.sessionExpiresAt,
 
   // ── Control de pestañas concurrentes ──────────────────────────
   tabId: tabId,
@@ -57,8 +84,22 @@ export const useAuthStore = create((set, get) => ({
 
     try {
       const activeSession = JSON.parse(activeSessionStr);
+
+      // Si la sesión ya expiró, la limpiamos y no hay conflicto
+      if (activeSession.expiresAt && Date.now() > activeSession.expiresAt) {
+        localStorage.removeItem("dora-active-session");
+        return false;
+      }
+
       if (!activeSession.email || activeSession.activeTabId === tabId) {
-        // Somos nosotros mismos, no hay conflicto
+        // Somos nosotros mismos, restauramos sesión si hace falta
+        if (!get().isAuthenticated) {
+          set({
+            isAuthenticated: true,
+            currentEmail: activeSession.email,
+            sessionExpiresAt: activeSession.expiresAt || (Date.now() + 30 * 60 * 1000)
+          });
+        }
         return false;
       }
 
@@ -295,7 +336,19 @@ export const useAuthStore = create((set, get) => ({
         }
       }
     } catch { /* ignorar */ }
-    set({ sessionExpiresAt: new Date().getTime() + timeoutMins * 60 * 1000 });
+    const expiresAt = new Date().getTime() + timeoutMins * 60 * 1000;
+    set({ sessionExpiresAt: expiresAt });
+
+    // También actualizar en localStorage
+    const activeSessionStr = localStorage.getItem("dora-active-session");
+    if (activeSessionStr) {
+      try {
+        const activeSession = JSON.parse(activeSessionStr);
+        activeSession.expiresAt = expiresAt;
+        activeSession.lastPing = Date.now();
+        localStorage.setItem("dora-active-session", JSON.stringify(activeSession));
+      } catch { /* ignorar */ }
+    }
   },
 
   checkSession: () => {

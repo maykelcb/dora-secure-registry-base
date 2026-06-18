@@ -5,7 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FilePlus, FileText, FileWarning, AlertTriangle, FileX, ChevronRight, Bell, Eye, EyeOff } from "lucide-react";
+import {
+  FilePlus,
+  FileText,
+  FileWarning,
+  AlertTriangle,
+  ChevronRight,
+  Bell,
+  Eye,
+  Users,
+  UserCheck,
+  UserX,
+  Globe,
+  MapPin
+} from "lucide-react";
 import { format, differenceInDays, isBefore, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -22,11 +35,48 @@ export default function Dashboard() {
 
   const metrics = useMemo(() => {
     const total = activeDocs.length;
-    const vigentes = activeDocs.filter(d => d.estatus === "Vigente").length;
-    const expirados = activeDocs.filter(d => d.estatus === "Expired / Expirado").length;
-    const perdidos = activeDocs.filter(d => d.estatus === "Lost / Perdido").length;
-    return { total, vigentes, expirados, perdidos };
+    
+    const masculinos = activeDocs.filter(d => {
+      const s = (d.sexo || d.genero || "").toLowerCase();
+      return s === "masculino" || s === "m";
+    }).length;
+
+    const femeninos = activeDocs.filter(d => {
+      const s = (d.sexo || d.genero || "").toLowerCase();
+      return s === "femenino" || s === "f";
+    }).length;
+
+    const uniqueGroups = new Set(
+      activeDocs
+        .map(d => d.grupoRegistro || d.grupo)
+        .filter(g => g && typeof g === "string" && g.trim() !== "")
+    );
+    const grupos = uniqueGroups.size;
+
+    return { total, masculinos, femeninos, grupos };
   }, [activeDocs]);
+
+  const paisesCount = useMemo(() => {
+    const counts = {};
+    activeDocs.forEach(d => {
+      const pais = d.paisOrigen || d.paisNacimiento || "No especificado";
+      counts[pais] = (counts[pais] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [activeDocs]);
+
+  const getSexoBadge = (sexo) => {
+    const s = (sexo || "").toLowerCase();
+    if (s === "masculino" || s === "m") {
+      return <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/50">Masculino</Badge>;
+    }
+    if (s === "femenino" || s === "f") {
+      return <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/20 dark:text-pink-300 dark:border-pink-900/50">Femenino</Badge>;
+    }
+    return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/20 dark:text-slate-300 dark:border-slate-900/50">{sexo || "No especificado"}</Badge>;
+  };
 
   const expiringDocs = useMemo(() => {
     const today = startOfDay(new Date());
@@ -56,12 +106,13 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [activeDocs]);
 
-  const MetricCard = ({ title, value, icon: Icon, colorClass }) => (
+  const MetricCard = ({ title, value, icon: Icon, colorClass, subtitle }) => (
     <Card>
       <CardContent className="p-6 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
           <h3 className="text-3xl font-bold font-serif">{value}</h3>
+          {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
         </div>
         <div className={`p-4 rounded-full ${colorClass}`}>
           <Icon className="w-6 h-6" />
@@ -102,7 +153,7 @@ export default function Dashboard() {
                   <AlertTriangle className="w-5 h-5 text-destructive" />
                   <div>
                     <p className="text-sm font-medium">{doc.nombreDocumento || doc.tipoDocumento}</p>
-                    <p className="text-xs text-muted-foreground">Venció el {format(new Date(doc.fechaVencimiento), "dd MMM yyyy", { locale: es })}</p>
+                    <p className="text-xs text-muted-foreground">Venció el {doc.fechaVencimiento ? format(new Date(doc.fechaVencimiento), "dd MMM yyyy", { locale: es }) : "—"}</p>
                   </div>
                 </div>
                 <Badge variant="destructive">Expirado</Badge>
@@ -114,7 +165,7 @@ export default function Dashboard() {
                   <FileWarning className={`w-5 h-5 ${doc.daysLeft <= 7 ? "text-destructive" : "text-orange-500"}`} />
                   <div>
                     <p className="text-sm font-medium">{doc.nombreDocumento || doc.tipoDocumento}</p>
-                    <p className="text-xs text-muted-foreground">Vence el {format(new Date(doc.fechaVencimiento), "dd MMM yyyy", { locale: es })}</p>
+                    <p className="text-xs text-muted-foreground">Vence el {doc.fechaVencimiento ? format(new Date(doc.fechaVencimiento), "dd MMM yyyy", { locale: es }) : "—"}</p>
                   </div>
                 </div>
                 <Badge variant={doc.daysLeft <= 7 ? "destructive" : "warning"}>
@@ -128,69 +179,139 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard title="Total Individuos" value={metrics.total} icon={FileText} colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" />
-        <MetricCard title="Individuos Vigentes" value={metrics.vigentes} icon={FileText} colorClass="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" />
-        <MetricCard title="Individuos Expirados" value={metrics.expirados} icon={AlertTriangle} colorClass="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" />
-        <MetricCard title="Individuos Perdidos" value={metrics.perdidos} icon={FileX} colorClass="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" />
+        <MetricCard
+          title="Total Individuos"
+          value={metrics.total}
+          icon={Users}
+          colorClass="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+          subtitle="registros activos"
+        />
+        <MetricCard
+          title="Masculinos"
+          value={metrics.masculinos}
+          icon={UserCheck}
+          colorClass="bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300"
+        />
+        <MetricCard
+          title="Femeninos"
+          value={metrics.femeninos}
+          icon={UserX}
+          colorClass="bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300"
+        />
+        <MetricCard
+          title="Grupos de Registro"
+          value={metrics.grupos}
+          icon={FileText}
+          colorClass="bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+          subtitle="núcleos familiares"
+        />
       </div>
 
-      {/* Recent Records */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle>Últimos 5 Individuos</CardTitle>
-            <CardDescription>Individuos añadidos recientemente al sistema.</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/documents">
-              Ver todos <ChevronRight className="w-4 h-4 ml-1" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {last5.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto text-muted/50 mb-3" />
-              <p>No hay registros aún.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Records */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Últimos Individuos Registrados</CardTitle>
+              <CardDescription>Los 5 registros más recientes del sistema.</CardDescription>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Registro</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Vencimiento</TableHead>
-                  <TableHead>Estatus</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {last5.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.nombreDocumento || doc.tipoDocumento.split(" / ")[0]}</TableCell>
-                    <TableCell className="text-muted-foreground">{doc.categoriaDocumento.split(" / ")[0]}</TableCell>
-                    <TableCell>
-                      {doc.fechaVencimiento ? format(new Date(doc.fechaVencimiento), "dd/MM/yyyy") : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {doc.estatus === "Vigente" && <Badge variant="success">Vigente</Badge>}
-                      {doc.estatus === "Expired / Expirado" && <Badge variant="destructive">Expirado</Badge>}
-                      {doc.estatus === "Lost / Perdido" && <Badge variant="muted">Perdido</Badge>}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/documents/${doc.id}`}>
-                          <Eye className="w-4 h-4 mr-1" /> Ver
-                        </Link>
-                      </Button>
-                    </TableCell>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/documents">
+                Ver todos <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">Cargando registros...</div>
+            ) : last5.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto text-muted/50 mb-3" />
+                <p>No hay individuos registrados aún.</p>
+                <Button className="mt-4" onClick={() => navigate("/documents/new")}>
+                  <FilePlus className="w-4 h-4 mr-2" /> Registrar primer individuo
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre Completo</TableHead>
+                    <TableHead>Sexo</TableHead>
+                    <TableHead>País de Origen</TableHead>
+                    <TableHead>Fecha de Registro</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {last5.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium max-w-[180px] truncate">
+                        {doc.nombreCompleto || doc.nombreDocumento || "Sin nombre"}
+                      </TableCell>
+                      <TableCell>{getSexoBadge(doc.sexo || doc.genero)}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {doc.paisOrigen || doc.paisNacimiento || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {doc.creadoEn
+                          ? format(new Date(doc.creadoEn), "dd/MM/yyyy", { locale: es })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/documents/${doc.id}`}>
+                            <Eye className="w-4 h-4 mr-1" /> Ver
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Countries Distribution */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              Países de Origen
+            </CardTitle>
+            <CardDescription>Top 5 países de los individuos registrados.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {paisesCount.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <MapPin className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                Sin datos disponibles.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paisesCount.map(([pais, count]) => (
+                  <div key={pais} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{pais}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="h-2 rounded-full bg-primary/20 w-20 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${Math.round((count / (activeDocs.length || 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-muted-foreground w-6 text-right">{count}</span>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

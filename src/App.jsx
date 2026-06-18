@@ -8,6 +8,7 @@ import IndividualFormView from './pages/IndividualFormView';
 import IndividualDetail from './pages/IndividualDetail';
 import GroupRegistry from './pages/GroupRegistry';
 import Settings from './pages/Settings';
+import Recepciones from './pages/Recepciones';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import SessionBarrier from './components/SessionBarrier';
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/documents/edit/:id" element={<IndividualFormView />} />
           <Route path="/documents/:id" element={<IndividualDetail />} />
           <Route path="/groups" element={<GroupRegistry />} />
+          <Route path="/recepciones" element={<Recepciones />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         

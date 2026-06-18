@@ -6,18 +6,23 @@ import { format } from "date-fns";
  */
 const prepareDataForExport = (data) => {
   return data.map(doc => ({
-    "Categoría": doc.categoriaDocumento,
-    "Tipo de Documento": doc.tipoDocumento,
-    "Nombre del Documento": doc.nombreDocumento || "-",
-    "Número": doc.numero || "-",
-    "Estatus": doc.estatus,
-    "Autoridad": doc.tipoAutoridad,
-    "País": doc.paisEmision,
-    "Lugar": doc.lugarEmision || "-",
-    "Fecha Emisión": doc.fechaEmision ? format(new Date(doc.fechaEmision), "dd/MM/yyyy") : "-",
-    "Fecha Vencimiento": doc.fechaVencimiento ? format(new Date(doc.fechaVencimiento), "dd/MM/yyyy") : "-",
-    "Descripción": doc.descripcion || "-",
-    "Fecha de Registro": format(new Date(doc.creadoEn), "dd/MM/yyyy HH:mm")
+    "ID Individual": doc.idIndividual || `CGU-${doc.id?.slice(0, 5) || "00000"}`,
+    "Grupo de Registro": doc.grupoRegistro || "-",
+    "Nombre Completo": doc.nombreCompleto || doc.nombreDocumento || "-",
+    "Sexo / Género": doc.sexo || doc.genero || "-",
+    "Edad": doc.edad || "-",
+    "País de Origen": doc.paisOrigen || doc.paisNacimiento || "-",
+    "Estatus Legal": doc.estatusLegal || doc.estatus || "-",
+    "Relación con PF": doc.relacionConPF || "Punto Focal (Líder)",
+    "Documento de Identidad": doc.documentoIdentidad || doc.tipoDocumento || "-",
+    "Número de Documento": doc.numeroDocumento || doc.numero || "-",
+    "Teléfono": doc.telefono || "-",
+    "Correo Electrónico": doc.email || "-",
+    "Dirección Actual": doc.direccionActual || "-",
+    "Unidad de Operaciones": doc.unidadOperaciones || "-",
+    "Fecha de Registro": doc.creadoEn ? format(new Date(doc.creadoEn), "dd/MM/yyyy HH:mm") : "-",
+    "Creado Por": doc.creadoPor || "-",
+    "Modificado Por": doc.modificadoPor || "-"
   }));
 };
 

@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, Settings, FilePlus, Users } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, FilePlus, Users, ClipboardCheck } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 export default function Sidebar() {
   const navItems = [
-    { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/documents", icon: FileText, label: "Registro de Individuos" },
+    { to: "/", icon: LayoutDashboard, label: "Dashboard", end: true },
+    { to: "/recepciones", icon: ClipboardCheck, label: "Recepciones", end: true },
+    { to: "/documents", icon: FileText, label: "Registro de Individuos", end: true },
     { to: "/documents/new", icon: FilePlus, label: "Registrar Individuos" },
     { to: "/groups", icon: Users, label: "Grupo de Registro" },
     { to: "/settings", icon: Settings, label: "Configuración" },
@@ -22,6 +23,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.end}
             className={({ isActive }) =>
               cn(
                 "flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors",

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { encryptData, decryptData, generateChecksum, verifyChecksum } from "@/utils/crypto";
-import { getSystemEncryptionKey } from "./authStore";
+import { getSystemEncryptionKey, useAuthStore } from "./authStore";
 import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import toast from "react-hot-toast";
 
@@ -143,11 +143,14 @@ export const useDocumentsStore = create((set, get) => ({
       ? generateGrupoRegistro()
       : null;
 
+    const currentUser = useAuthStore.getState().currentEmail || "admin@dora.org";
     const docWithDates = {
       ...doc,
       id: crypto.randomUUID(),
       creadoEn: new Date().toISOString(),
       modificadoEn: new Date().toISOString(),
+      creadoPor: currentUser,
+      modificadoPor: currentUser,
       eliminado: false,
       eliminadoEn: null,
       grupoRegistro,
@@ -205,11 +208,13 @@ export const useDocumentsStore = create((set, get) => ({
       grupoRegistro = generateGrupoRegistro();
     }
 
+    const currentUser = useAuthStore.getState().currentEmail || "admin@dora.org";
     const updatedDoc = {
       ...docToUpdate,
       ...updatedFields,
       grupoRegistro,
       modificadoEn: new Date().toISOString(),
+      modificadoPor: currentUser,
     };
     updatedDoc.checksum = generateChecksum(updatedDoc);
 

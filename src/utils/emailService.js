@@ -52,13 +52,14 @@ export function maskEmail(email) {
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
 export async function sendOtpEmail(toEmail, otpCode) {
-  if (!isConfigured()) {
+  const isDevMode = import.meta.env.VITE_DEV_MODE === "true";
+
+  if (isDevMode || !isConfigured()) {
     console.warn(
-      "[EmailJS] Las variables de entorno no están configuradas.\n" +
-      "Copia .env.example a .env y completa los valores de EmailJS.\n" +
+      "[EmailJS] Modo desarrollo activo o variables no configuradas.\n" +
       `OTP generado (modo desarrollo): ${otpCode}`
     );
-    // En desarrollo sin configurar, simulamos éxito para poder probar el flujo
+    // En desarrollo simulamos éxito para poder probar el flujo sin gastar cuota de correos
     return { success: true, devMode: true };
   }
 

@@ -214,8 +214,12 @@ export default function Settings() {
                 <TableBody>
                   {deletedDocs.map(doc => (
                     <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.nombreDocumento || doc.tipoDocumento.split(" / ")[0]}</TableCell>
-                      <TableCell>{doc.categoriaDocumento.split(" / ")[0]}</TableCell>
+                      <TableCell className="font-medium">
+                        {doc.nombreCompleto || doc.nombreDocumento || (doc.tipoDocumento ? doc.tipoDocumento.split(" / ")[0] : "Sin nombre")}
+                      </TableCell>
+                      <TableCell>
+                        {doc.categoriaDocumento ? doc.categoriaDocumento.split(" / ")[0] : (doc.relacionConPF || "Individual")}
+                      </TableCell>
                       <TableCell>{doc.eliminadoEn ? new Date(doc.eliminadoEn).toLocaleDateString() : "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
