@@ -151,6 +151,9 @@ export const useDocumentsStore = create((set, get) => ({
       modificadoEn: new Date().toISOString(),
       creadoPor: currentUser,
       modificadoPor: currentUser,
+      ultimaAccionPor: currentUser,
+      ultimaAccionTipo: "Creó",
+      ultimaAccionEn: new Date().toISOString(),
       eliminado: false,
       eliminadoEn: null,
       grupoRegistro,
@@ -215,6 +218,9 @@ export const useDocumentsStore = create((set, get) => ({
       grupoRegistro,
       modificadoEn: new Date().toISOString(),
       modificadoPor: currentUser,
+      ultimaAccionPor: currentUser,
+      ultimaAccionTipo: "Modificó",
+      ultimaAccionEn: new Date().toISOString(),
     };
     updatedDoc.checksum = generateChecksum(updatedDoc);
 
@@ -267,6 +273,9 @@ export const useDocumentsStore = create((set, get) => ({
           eliminado: true,
           eliminadoEn: new Date().toISOString(),
           modificadoEn: new Date().toISOString(),
+          ultimaAccionPor: useAuthStore.getState().currentEmail || "admin@dora.org",
+          ultimaAccionTipo: "Eliminó",
+          ultimaAccionEn: new Date().toISOString(),
         };
         updatedDoc.checksum = generateChecksum(updatedDoc);
         const newDocs = currentDocs.map(d => d.id === id ? updatedDoc : d);
@@ -288,6 +297,9 @@ export const useDocumentsStore = create((set, get) => ({
           eliminado: true,
           eliminadoEn: new Date().toISOString(),
           modificadoEn: new Date().toISOString(),
+          ultimaAccionPor: useAuthStore.getState().currentEmail || "admin@dora.org",
+          ultimaAccionTipo: "Eliminó",
+          ultimaAccionEn: new Date().toISOString(),
         };
         updatedDoc.checksum = generateChecksum(updatedDoc);
         const encrypted = encryptData(updatedDoc, encryptionKey);
@@ -339,6 +351,9 @@ export const useDocumentsStore = create((set, get) => ({
       eliminado: false,
       eliminadoEn: null,
       modificadoEn: new Date().toISOString(),
+      ultimaAccionPor: useAuthStore.getState().currentEmail || "admin@dora.org",
+      ultimaAccionTipo: "Restauró",
+      ultimaAccionEn: new Date().toISOString(),
     };
     updatedDoc.checksum = generateChecksum(updatedDoc);
 

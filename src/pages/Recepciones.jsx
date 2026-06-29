@@ -44,7 +44,14 @@ export default function Recepciones() {
       numero: doc.numero || `${Math.floor(Math.random() * 9000000000) + 1000000000}`,
       fechaCreacion: doc.creadoEn ? format(new Date(doc.creadoEn), "M/d/yyyy H:mm") : "—",
       tipoAcceso: doc.tipoRegistro || "Registro",
-      tamanoFamilia: doc.tamanoFamilia || Math.floor(Math.random() * 5) + 1,
+      tamanoGrupo: (() => {
+        const groupId = doc.grupoRegistro;
+        if (!groupId) return 1;
+        return activeDocs.filter(item => item.grupoRegistro === groupId).length;
+      })(),
+      creadoPor: doc.creadoPor || "—",
+      ultimaModificacion: doc.modificadoEn ? format(new Date(doc.modificadoEn), "M/d/yyyy H:mm") : "—",
+      modificadoPor: doc.modificadoPor || "—",
       edad: doc.edad || "—",
       sexo: doc.sexo === "Femenino" ? "Fe" : doc.sexo === "Masculino" ? "M" : "—",
       raw: doc,
@@ -175,15 +182,17 @@ export default function Recepciones() {
                   <div className="flex items-center gap-1">Tipo de Acc... <ChevronDown className="w-3 h-3" /></div>
                 </TableHead>
                 <TableHead className="py-2 text-xs font-semibold">
-                  <div className="flex items-center gap-1">Tamaño d... <ChevronDown className="w-3 h-3" /></div>
+                  <div className="flex items-center gap-1">Tamaño de Grupo <ChevronDown className="w-3 h-3" /></div>
                 </TableHead>
                 <TableHead className="py-2 text-xs font-semibold">
-                  <div className="flex items-center gap-1">Edad <ChevronDown className="w-3 h-3" /></div>
+                  <div className="flex items-center gap-1">Creado por <ChevronDown className="w-3 h-3" /></div>
                 </TableHead>
                 <TableHead className="py-2 text-xs font-semibold">
-                  <div className="flex items-center gap-1">Se <ChevronDown className="w-3 h-3" /></div>
+                  <div className="flex items-center gap-1">Última modificación <ChevronDown className="w-3 h-3" /></div>
                 </TableHead>
-                <TableHead className="py-2 text-xs font-semibold text-right">Acciones</TableHead>
+                <TableHead className="py-2 text-xs font-semibold">
+                  <div className="flex items-center gap-1">Modificado por <ChevronDown className="w-3 h-3" /></div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -213,22 +222,10 @@ export default function Recepciones() {
                     <TableCell className="py-2 text-muted-foreground text-xs">{rec.numero}</TableCell>
                     <TableCell className="py-2 text-xs">{rec.fechaCreacion}</TableCell>
                     <TableCell className="py-2 text-xs">{rec.tipoAcceso}</TableCell>
-                    <TableCell className="py-2 text-center">{rec.tamanoFamilia}</TableCell>
-                    <TableCell className="py-2 text-center">{rec.edad}</TableCell>
-                    <TableCell className="py-2 text-center">{rec.sexo}</TableCell>
-                    <TableCell className="py-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Ver">
-                          <Link to={`/documents/${rec.id}`}><Eye className="w-3.5 h-3.5 text-blue-600" /></Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Editar">
-                          <Link to={`/documents/edit/${rec.id}`}><Edit className="w-3.5 h-3.5 text-orange-500" /></Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleDelete(rec.id)} title="Eliminar">
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    <TableCell className="py-2 text-center">{rec.tamanoGrupo}</TableCell>
+                    <TableCell className="py-2 text-xs">{rec.creadoPor}</TableCell>
+                    <TableCell className="py-2 text-xs">{rec.ultimaModificacion}</TableCell>
+                    <TableCell className="py-2 text-xs">{rec.modificadoPor}</TableCell>
                   </TableRow>
                 ))
               )}

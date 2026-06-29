@@ -31,6 +31,8 @@ const individualSchema = z.object({
   // INFORMACIÓN INDIVIDUAL
   grupoRegistroIndividual: z.string().optional(),
   relacionConPF: z.string().min(1, "Campo obligatorio"),
+  tipoDocumento: z.string().min(1, "Campo obligatorio"),
+  numeroDocumento: z.string().optional().nullable().or(z.literal("")),
   nombreCompleto: z.string().min(1, "Campo obligatorio").regex(nameRegex, nameMessage),
   sexo: z.string().min(1, "Campo obligatorio"),
   nombrePila: z.string().regex(nameRegex, nameMessage).optional().or(z.literal("")),
@@ -63,6 +65,10 @@ const individualSchema = z.object({
   telefonoVerificado: z.string().optional(),
   correoVerificado: z.string().optional(),
   mensajeriaVerificada: z.string().optional(),
+  telefono: z.string().optional().or(z.literal("")),
+  correoElectronico: z.string().optional().or(z.literal("")),
+  mensajeriaApp: z.string().optional().or(z.literal("")),
+  mensajeriaAppOtro: z.string().optional().or(z.literal("")),
 
   // LINKED IDS
   idHeredado: z.string().optional(),
@@ -104,16 +110,17 @@ const individualSchema = z.object({
   fechaUltimoReingreso: z.string().optional().nullable(),
 
   // CONSENTIMIENTO
-  fechaAsesoriaConsentimiento: z.string().min(1, "Campo obligatorio"),
+  fechaAsesoriaConsentimiento: z.string().optional().or(z.literal("")),
   personaNoCapazConsentir: z.boolean().optional(),
-  informadaCompartirBasica: z.string().min(1, "Campo obligatorio"),
-  puedeFirmar: z.string().optional(),
-  consentProvider: z.string().optional(),
-  aceptaCompartirPersonales: z.string().min(1, "Campo obligatorio"),
+  informadaCompartirBasica: z.string().optional().or(z.literal("")),
+  puedeFirmar: z.string().optional().or(z.literal("")),
+  consentProvider: z.string().optional().or(z.literal("")),
+  aceptaCompartirPersonales: z.string().optional().or(z.literal("")),
   nameConsentRegistrado: z.string().regex(nameRegex, nameMessage).optional().or(z.literal("")),
-  aceptaCompartirVulnerabilidades: z.string().min(1, "Campo obligatorio"),
+  aceptaCompartirVulnerabilidades: z.string().optional().or(z.literal("")),
   nameConsentOtro: z.string().regex(nameRegex, nameMessage).optional().or(z.literal("")),
-  acuerdoNNA: z.string().optional(),
+  acuerdoNNA: z.string().optional().or(z.literal("")),
+  observacionesVulnerabilidad: z.string().optional().or(z.literal("")),
 
   // PROPIEDADES (Read-only metadata)
   creadoEn: z.string().optional(),
@@ -130,6 +137,38 @@ const individualSchema = z.object({
       });
     }
   }
+
+  const needsConsent = !data.personaNoCapazConsentir;
+  if (needsConsent) {
+    if (!data.fechaAsesoriaConsentimiento || data.fechaAsesoriaConsentimiento.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.required_error,
+        message: "Campo obligatorio",
+        path: ["fechaAsesoriaConsentimiento"],
+      });
+    }
+    if (!data.informadaCompartirBasica || data.informadaCompartirBasica.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.required_error,
+        message: "Campo obligatorio",
+        path: ["informadaCompartirBasica"],
+      });
+    }
+    if (!data.aceptaCompartirPersonales || data.aceptaCompartirPersonales.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.required_error,
+        message: "Campo obligatorio",
+        path: ["aceptaCompartirPersonales"],
+      });
+    }
+    if (!data.aceptaCompartirVulnerabilidades || data.aceptaCompartirVulnerabilidades.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.required_error,
+        message: "Campo obligatorio",
+        path: ["aceptaCompartirVulnerabilidades"],
+      });
+    }
+  }
 });
 
 // ─── Options ──────────────────────────────────────────────────────────────────
@@ -141,6 +180,8 @@ const RELACION_PF_OPTIONS = [
   "Sobrino/a", "Tío/a", "Primo/a", "Abuelo/a", "Nieto/a", "Otro familiar",
 ];
 const SI_NO_OPTIONS = ["Sí", "No", "Desconocido"];
+const MENSAJERIA_OPTIONS = ["WhatsApp", "Telegram", "Signal", "Otro"];
+const TIPO_DOCUMENTO_OPTIONS = ["DNI", "Cédula", "Carnet de Extranjería", "Pasaporte", "No aplica"];
 const EDUCACION_OPTIONS = [
   "Sin educación formal", "Primaria incompleta", "Primaria completa",
   "Secundaria incompleta", "Secundaria completa", "Universitaria incompleta",
@@ -242,6 +283,8 @@ export default function IndividualFormView() {
       unidadOperaciones: "",
       relacionConPF: queryGrupo ? "Hijo/a" : "Punto Focal",
       sexo: "",
+      tipoDocumento: "",
+      numeroDocumento: "",
       fallecido: "No",
       estatusLegal: "",
       fechaEstatusLegal: "",
@@ -255,7 +298,12 @@ export default function IndividualFormView() {
       informadaCompartirBasica: "",
       aceptaCompartirPersonales: "",
       aceptaCompartirVulnerabilidades: "",
+      observacionesVulnerabilidad: "",
       paisOrigen: "",
+      telefono: "",
+      correoElectronico: "",
+      mensajeriaApp: "",
+      mensajeriaAppOtro: "",
       edad: "",
       apellidoCompleto: "",
       nombreCompleto: "",
@@ -265,6 +313,72 @@ export default function IndividualFormView() {
   const watchCreacion = watch("creacionGrupo");
   const watchRelacion = watch("relacionConPF");
   const watchFallecido = watch("fallecido");
+  const isCreatingNewGroup = watchCreacion === "Crear nuevo grupo";
+  const isExistingGroupSelection = watchCreacion === "Añadir a un Grupo de Registro existente";
+  const relationOptions = isCreatingNewGroup
+    ? ["Punto Focal"]
+    : RELACION_PF_OPTIONS.filter(option => option !== "Punto Focal");
+  const watchPersonaNoCapazConsentir = watch("personaNoCapazConsentir");
+  const watchTelefonoVerificado = watch("telefonoVerificado");
+  const watchCorreoVerificado = watch("correoVerificado");
+  const watchMensajeriaVerificada = watch("mensajeriaVerificada");
+  const watchMensajeriaApp = watch("mensajeriaApp");
+  const watchTipoDocumento = watch("tipoDocumento");
+  const consentSectionDisabled = Boolean(watchPersonaNoCapazConsentir);
+  const telefonoSectionVisible = watchTelefonoVerificado === "Sí";
+  const correoSectionVisible = watchCorreoVerificado === "Sí";
+  const mensajeriaSectionVisible = watchMensajeriaVerificada === "Sí";
+  const mensajeriaOtroVisible = watchMensajeriaApp === "Otro";
+  const tipoDocumentoNoAplica = watchTipoDocumento === "No aplica";
+
+  useEffect(() => {
+    if (consentSectionDisabled) {
+      setValue("fechaAsesoriaConsentimiento", "");
+      setValue("informadaCompartirBasica", "");
+      setValue("puedeFirmar", "");
+      setValue("consentProvider", "");
+      setValue("aceptaCompartirPersonales", "");
+      setValue("nameConsentRegistrado", "");
+      setValue("aceptaCompartirVulnerabilidades", "");
+      setValue("nameConsentOtro", "");
+      setValue("acuerdoNNA", "");
+    }
+  }, [consentSectionDisabled, setValue]);
+
+  useEffect(() => {
+    if (isCreatingNewGroup) {
+      setValue("grupoRegistro", "");
+      if (watchRelacion !== "Punto Focal") {
+        setValue("relacionConPF", "Punto Focal");
+      }
+      return;
+    }
+
+    if (isExistingGroupSelection) {
+      if (watchRelacion === "Punto Focal" || !relationOptions.includes(watchRelacion)) {
+        setValue("relacionConPF", relationOptions[0] || "");
+      }
+    }
+  }, [isCreatingNewGroup, isExistingGroupSelection, relationOptions, watchRelacion, setValue]);
+
+  useEffect(() => {
+    if (!telefonoSectionVisible) {
+      setValue("telefono", "");
+    }
+    if (!correoSectionVisible) {
+      setValue("correoElectronico", "");
+    }
+    if (!mensajeriaSectionVisible) {
+      setValue("mensajeriaApp", "");
+      setValue("mensajeriaAppOtro", "");
+    }
+    if (!mensajeriaOtroVisible) {
+      setValue("mensajeriaAppOtro", "");
+    }
+    if (tipoDocumentoNoAplica) {
+      setValue("numeroDocumento", null);
+    }
+  }, [telefonoSectionVisible, correoSectionVisible, mensajeriaSectionVisible, mensajeriaOtroVisible, tipoDocumentoNoAplica, setValue]);
 
   const formatPropertyDate = (dateStr) => {
     if (!dateStr) return "—";
@@ -487,7 +601,7 @@ export default function IndividualFormView() {
                   render={({ field }) => (
                     <Select {...field} className={`${errors.relacionConPF ? "border-red-500" : ""}`}>
                       <option value="">Seleccionar...</option>
-                      {RELACION_PF_OPTIONS.map(o => (
+                      {relationOptions.map(o => (
                         <option key={o} value={o}>{o}</option>
                       ))}
                     </Select>
@@ -495,6 +609,42 @@ export default function IndividualFormView() {
                 />
                 <FieldError error={errors.relacionConPF} />
               </div>
+            </div>
+
+            {/* Tipo de Documento */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">
+                Tipo de Documento <RequiredMark />
+              </Label>
+              <div className="relative">
+                <Controller
+                  name="tipoDocumento"
+                  control={control}
+                  render={({ field }) => (
+                    <Select {...field} className={`${errors.tipoDocumento ? "border-red-500" : ""}`}>
+                      <option value="">Seleccionar...</option>
+                      {TIPO_DOCUMENTO_OPTIONS.map(o => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </Select>
+                  )}
+                />
+                <FieldError error={errors.tipoDocumento} />
+              </div>
+            </div>
+
+            {/* Número de Documento */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">
+                Número de Documento {tipoDocumentoNoAplica ? null : <RequiredMark />}
+              </Label>
+              <Input
+                {...register("numeroDocumento")}
+                placeholder="Ej. A12345678, 1234-567890"
+                disabled={tipoDocumentoNoAplica}
+                className={errors.numeroDocumento ? "border-red-500" : ""}
+              />
+              <FieldError error={errors.numeroDocumento} />
             </div>
 
             {/* Nombre Completo */}
@@ -847,6 +997,58 @@ export default function IndividualFormView() {
               />
             </div>
           </FormRow>
+          {(telefonoSectionVisible || correoSectionVisible || mensajeriaSectionVisible) && (
+            <FormRow cols={3}>
+              {telefonoSectionVisible && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Teléfono</Label>
+                  <Input
+                    {...register("telefono")}
+                    placeholder="Número de teléfono"
+                    type="tel"
+                  />
+                </div>
+              )}
+
+              {correoSectionVisible && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Correo Electrónico</Label>
+                  <Input
+                    {...register("correoElectronico")}
+                    placeholder="Correo electrónico"
+                    type="email"
+                  />
+                </div>
+              )}
+
+              {mensajeriaSectionVisible && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Aplicación de Mensajería</Label>
+                  <Controller
+                    name="mensajeriaApp"
+                    control={control}
+                    render={({ field }) => (
+                      <Select {...field}>
+                        <option value="">Seleccionar...</option>
+                        {MENSAJERIA_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                      </Select>
+                    )}
+                  />
+                </div>
+              )}
+            </FormRow>
+          )}
+          {mensajeriaSectionVisible && mensajeriaOtroVisible && (
+            <FormRow cols={1}>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Otra Aplicación de Mensajería</Label>
+                <Input
+                  {...register("mensajeriaAppOtro")}
+                  placeholder="Escribe la aplicación"
+                />
+              </div>
+            </FormRow>
+          )}
         </SectionCard>
 
         {/* ═══ 4. LINKED IDS ══════════════════════════════════════════════════ */}
@@ -1169,11 +1371,12 @@ export default function IndividualFormView() {
           <FormRow cols={2}>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">
-                Fecha de Asesoría de Consentimiento <RequiredMark />
+                Fecha de Asesoría de Consentimiento {!consentSectionDisabled && <RequiredMark />}
               </Label>
               <Input
                 type="date"
                 {...register("fechaAsesoriaConsentimiento")}
+                disabled={consentSectionDisabled}
                 className={errors.fechaAsesoriaConsentimiento ? "border-red-500" : ""}
               />
               <FieldError error={errors.fechaAsesoriaConsentimiento} />
@@ -1196,13 +1399,17 @@ export default function IndividualFormView() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">
-                Se Informó a la PdI que la Información Personal Básica Puede Ser Compartida <RequiredMark />
+                Se Informó a la PdI que la Información Personal Básica Puede Ser Compartida {!consentSectionDisabled && <RequiredMark />}
               </Label>
               <Controller
                 name="informadaCompartirBasica"
                 control={control}
                 render={({ field }) => (
-                  <Select {...field} className={errors.informadaCompartirBasica ? "border-red-500" : ""}>
+                  <Select
+                    {...field}
+                    disabled={consentSectionDisabled}
+                    className={errors.informadaCompartirBasica ? "border-red-500" : ""}
+                  >
                     <option value="">Seleccionar...</option>
                     {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </Select>
@@ -1217,7 +1424,7 @@ export default function IndividualFormView() {
                 name="puedeFirmar"
                 control={control}
                 render={({ field }) => (
-                  <Select {...field}>
+                  <Select {...field} disabled={consentSectionDisabled}>
                     <option value="">Seleccionar...</option>
                     {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </Select>
@@ -1227,18 +1434,26 @@ export default function IndividualFormView() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Consent Provider</Label>
-              <Input {...register("consentProvider")} placeholder="Nombre del proveedor de consentimiento" />
+              <Input
+                {...register("consentProvider")}
+                placeholder="Nombre del proveedor de consentimiento"
+                disabled={consentSectionDisabled}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">
-                Acepta Compartir Datos Personales <RequiredMark />
+                Acepta Compartir Datos Personales {!consentSectionDisabled && <RequiredMark />}
               </Label>
               <Controller
                 name="aceptaCompartirPersonales"
                 control={control}
                 render={({ field }) => (
-                  <Select {...field} className={errors.aceptaCompartirPersonales ? "border-red-500" : ""}>
+                  <Select
+                    {...field}
+                    disabled={consentSectionDisabled}
+                    className={errors.aceptaCompartirPersonales ? "border-red-500" : ""}
+                  >
                     <option value="">Seleccionar...</option>
                     {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </Select>
@@ -1249,18 +1464,26 @@ export default function IndividualFormView() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Name – Consent Provider (Registered)</Label>
-              <Input {...register("nameConsentRegistrado")} placeholder="Nombre del proveedor registrado" />
+              <Input
+                {...register("nameConsentRegistrado")}
+                placeholder="Nombre del proveedor registrado"
+                disabled={consentSectionDisabled}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">
-                Acepta Compartir Vulnerabilidades Evaluadas <RequiredMark />
+                Acepta Compartir Vulnerabilidades Evaluadas {!consentSectionDisabled && <RequiredMark />}
               </Label>
               <Controller
                 name="aceptaCompartirVulnerabilidades"
                 control={control}
                 render={({ field }) => (
-                  <Select {...field} className={errors.aceptaCompartirVulnerabilidades ? "border-red-500" : ""}>
+                  <Select
+                    {...field}
+                    disabled={consentSectionDisabled}
+                    className={errors.aceptaCompartirVulnerabilidades ? "border-red-500" : ""}
+                  >
                     <option value="">Seleccionar...</option>
                     {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </Select>
@@ -1271,7 +1494,11 @@ export default function IndividualFormView() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Name – Consent Provider (Other)</Label>
-              <Input {...register("nameConsentOtro")} placeholder="Nombre de otro proveedor de consentimiento" />
+              <Input
+                {...register("nameConsentOtro")}
+                placeholder="Nombre de otro proveedor de consentimiento"
+                disabled={consentSectionDisabled}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -1290,7 +1517,20 @@ export default function IndividualFormView() {
           </FormRow>
         </SectionCard>
 
-        {/* ═══ 9. PROPIEDADES ══════════════════════════════════════════════════ */}
+        {/* ═══ 9. OBSERVACIÓN DE VULNERABILIDAD ═════════════════════════════ */}
+        <SectionCard icon={Shield} title="Observación de Vulnerabilidad" defaultOpen={false}>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Observaciones</Label>
+            <textarea
+              {...register("observacionesVulnerabilidad")}
+              placeholder="Escriba cualquier detalle relevante sobre la vulnerabilidad o situación del individuo"
+              className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">Campo opcional. Puede incluir cualquier detalle pertinente.</p>
+          </div>
+        </SectionCard>
+
+        {/* ═══ 10. PROPIEDADES ═════════════════════════════════════════════════ */}
         <SectionCard icon={Clipboard} title="Propiedades" defaultOpen={true}>
           <FormRow cols={2}>
             {/* Fecha de creación */}

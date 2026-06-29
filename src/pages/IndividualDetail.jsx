@@ -100,6 +100,9 @@ export default function IndividualDetail() {
           Volver al listado
         </Button>
         <div className="flex gap-2">
+          <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20" onClick={() => navigate(`/documents/${doc.id}/assistance`)}>
+            <FileText className="w-4 h-4 mr-2" /> Registrar asistencia
+          </Button>
           <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-950/20" asChild>
             <Link to={`/documents/edit/${doc.id}`}>
               <Edit className="w-4 h-4 mr-2" /> Editar

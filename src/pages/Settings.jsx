@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useAuthStore, getSystemEncryptionKey } from "@/store/authStore";
+import { useAuthStore } from "@/store/authStore";
 import { useDocumentsStore } from "@/store/documentsStore";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,53 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ShieldCheck, Clock, Download, Upload, Trash2, ShieldAlert, RotateCcw, Mail, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Clock, Trash2, ShieldAlert, RotateCcw, Mail, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function Settings() {
   const { timeoutMinutes, setTimeoutMinutes } = useSettingsStore();
   const { logout, currentEmail } = useAuthStore();
-  const { documents, importBackup, resetSystem, restoreDocument, deleteDocument } = useDocumentsStore();
+  const { documents, resetSystem, restoreDocument, deleteDocument } = useDocumentsStore();
 
   const [resetConfirm, setResetConfirm] = useState("");
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-
-  const handleExportBackup = () => {
-    // Exportamos encriptado directamente del localStorage
-    const encryptedData = localStorage.getItem("dora-encrypted-docs");
-    if (!encryptedData) {
-      toast.error("No hay datos para exportar.");
-      return;
-    }
-    
-    const blob = new Blob([encryptedData], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `dora_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Copia de seguridad exportada");
-  };
-
-  const handleImportBackup = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target.result;
-      const success = importBackup(content, getSystemEncryptionKey());
-      if (success) {
-        toast.success("Datos importados y restaurados correctamente");
-      } else {
-        toast.error("Fallo al importar. Asegúrate de que la copia sea de este mismo sistema.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
 
   const handleResetSystem = () => {
     if (resetConfirm === "RESTABLECER") {
@@ -67,6 +30,38 @@ export default function Settings() {
   };
 
   const deletedDocs = documents.filter(d => d.eliminado);
+  const userActions = useMemo(() => {
+    return [...documents]
+      .map((doc) => {
+        const actionType =
+          doc.ultimaAccionTipo ||
+          (doc.eliminado && doc.eliminadoEn ? "Eliminó" : null) ||
+          (doc.modificadoEn && doc.creadoEn && doc.modificadoEn !== doc.creadoEn ? "Modificó" : null) ||
+          (doc.creadoEn ? "Creó" : "Sin acción");
+
+        const actionUser =
+          doc.ultimaAccionPor ||
+          doc.modificadoPor ||
+          doc.creadoPor ||
+          currentEmail ||
+          "Sistema";
+
+        const actionDate =
+          doc.ultimaAccionEn ||
+          doc.modificadoEn ||
+          doc.creadoEn ||
+          null;
+
+        return {
+          id: doc.id,
+          nombre: doc.nombreCompleto || doc.nombreDocumento || "Sin nombre",
+          accion: actionType,
+          usuario: actionUser,
+          fecha: actionDate,
+        };
+      })
+      .sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+  }, [documents, currentEmail]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
@@ -118,73 +113,43 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Datos y Respaldos */}
+        {/* Acciones del usuario */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
-              <Download className="w-5 h-5 mr-2 text-primary" /> Respaldos y Datos
+              <Clock className="w-5 h-5 mr-2 text-primary" /> Acciones del Usuario
             </CardTitle>
             <CardDescription>
-              Las copias de seguridad se exportan encriptadas con la clave del sistema.
+              Historial de los individuos que fueron creados, modificados, eliminados o restaurados.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full justify-start" onClick={handleExportBackup}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar Copia de Seguridad (.json encriptado)
-              </Button>
-              
-              <div className="relative">
-                <Input 
-                  type="file" 
-                  accept=".json" 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                  onChange={handleImportBackup}
-                />
-                <Button variant="outline" className="w-full justify-start pointer-events-none">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Importar Copia de Seguridad
-                </Button>
+          <CardContent>
+            {userActions.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No hay acciones registradas aún.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Individuo</TableHead>
+                      <TableHead>Acción</TableHead>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Fecha</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {userActions.map((action) => (
+                      <TableRow key={action.id}>
+                        <TableCell className="font-medium">{action.nombre}</TableCell>
+                        <TableCell>{action.accion}</TableCell>
+                        <TableCell>{action.usuario}</TableCell>
+                        <TableCell>{action.fecha ? new Date(action.fecha).toLocaleString() : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-
-            <div className="pt-6 border-t">
-              <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
-                    <ShieldAlert className="w-4 h-4 mr-2" />
-                    Restablecer Sistema (Borrar Todo)
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="text-destructive flex items-center">
-                      <AlertTriangle className="w-5 h-5 mr-2" />
-                      Peligro: Borrado Irreversible
-                    </DialogTitle>
-                    <DialogDescription>
-                      Esta acción eliminará todos los documentos y la configuración del sistema. No podrás recuperar los datos a menos que tengas un respaldo.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <p className="text-sm font-medium">Escribe "RESTABLECER" para confirmar:</p>
-                    <Input 
-                      value={resetConfirm} 
-                      onChange={(e) => setResetConfirm(e.target.value)}
-                      placeholder="RESTABLECER"
-                      className="border-destructive focus-visible:ring-destructive"
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancelar</Button>
-                    <Button variant="destructive" disabled={resetConfirm !== "RESTABLECER"} onClick={handleResetSystem}>
-                      Eliminar Todo
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
