@@ -40,7 +40,7 @@ export const useDocumentsStore = create((set, get) => ({
           return;
         }
 
-        const regularDocs = decrypted.filter(d => d.id !== "system-user-registry");
+        const regularDocs = decrypted.filter(d => d.id !== "00000000-0000-0000-0000-000000000002");
 
         let hasCorruptedData = false;
         regularDocs.forEach(doc => {
@@ -83,7 +83,7 @@ export const useDocumentsStore = create((set, get) => ({
       let hasCorruptedData = false;
 
       for (const row of data) {
-        if (row.id === "system-user-registry") {
+        if (row.id === "00000000-0000-0000-0000-000000000002") {
           continue; // Evitar mezclar el registro de usuarios con los documentos normales
         }
         const decryptedDoc = decryptData(row.encrypted_data, encryptionKey);
@@ -129,7 +129,7 @@ export const useDocumentsStore = create((set, get) => ({
       if (existingEncrypted) {
         const decrypted = decryptData(existingEncrypted, encryptionKey);
         if (decrypted) {
-          registryDoc = decrypted.find(d => d.id === "system-user-registry");
+          registryDoc = decrypted.find(d => d.id === "00000000-0000-0000-0000-000000000002");
         }
       }
 
@@ -437,7 +437,7 @@ export const useDocumentsStore = create((set, get) => ({
         .from("documents")
         .delete()
         .neq("id", "00000000-0000-0000-0000-000000000000")
-        .neq("id", "system-user-registry");
+        .neq("id", "00000000-0000-0000-0000-000000000002");
       
       if (deleteError) throw deleteError;
 
@@ -470,7 +470,7 @@ export const useDocumentsStore = create((set, get) => ({
           .from("documents")
           .delete()
           .neq("id", "00000000-0000-0000-0000-000000000000")
-          .neq("id", "system-user-registry");
+          .neq("id", "00000000-0000-0000-0000-000000000002");
         
         if (error) throw error;
       } catch (err) {

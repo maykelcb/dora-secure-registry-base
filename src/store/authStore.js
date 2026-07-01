@@ -22,7 +22,7 @@ export async function fetchUserRegistry() {
       const { data, error } = await supabase
         .from("documents")
         .select("encrypted_data")
-        .eq("id", "system-user-registry")
+        .eq("id", "00000000-0000-0000-0000-000000000002")
         .maybeSingle();
 
       if (error) {
@@ -45,7 +45,7 @@ export async function fetchUserRegistry() {
       if (!encryptedData) return null;
       const decrypted = decryptData(encryptedData, encryptionKey);
       if (!decrypted) return null;
-      const registryDoc = decrypted.find(d => d.id === "system-user-registry");
+      const registryDoc = decrypted.find(d => d.id === "00000000-0000-0000-0000-000000000002");
       return registryDoc?.users || null;
     } catch (e) {
       console.error("Error loading user registry locally:", e);
@@ -60,7 +60,7 @@ export async function fetchUserRegistry() {
 export async function saveUserRegistry(usersList) {
   const encryptionKey = getSystemEncryptionKey();
   const doc = {
-    id: "system-user-registry",
+    id: "00000000-0000-0000-0000-000000000002",
     users: usersList,
     updatedAt: new Date().toISOString()
   };
@@ -72,7 +72,7 @@ export async function saveUserRegistry(usersList) {
       const { data: existingRow, error: checkError } = await supabase
         .from("documents")
         .select("id")
-        .eq("id", "system-user-registry")
+        .eq("id", "00000000-0000-0000-0000-000000000002")
         .maybeSingle();
 
       if (checkError) {
@@ -84,10 +84,9 @@ export async function saveUserRegistry(usersList) {
         const { error } = await supabase
           .from("documents")
           .update({
-            encrypted_data: encrypted,
-            updated_at: new Date().toISOString()
+            encrypted_data: encrypted
           })
-          .eq("id", "system-user-registry");
+          .eq("id", "00000000-0000-0000-0000-000000000002");
         if (error) throw error;
       } else {
         // Insertar nuevo registro
@@ -95,7 +94,7 @@ export async function saveUserRegistry(usersList) {
           .from("documents")
           .insert([
             {
-              id: "system-user-registry",
+              id: "00000000-0000-0000-0000-000000000002",
               encrypted_data: encrypted,
               eliminado: false,
               created_at: new Date().toISOString()
@@ -115,7 +114,7 @@ export async function saveUserRegistry(usersList) {
         const decrypted = decryptData(encryptedData, encryptionKey);
         if (decrypted) currentDocs = decrypted;
       }
-      const cleanDocs = currentDocs.filter(d => d.id !== "system-user-registry");
+      const cleanDocs = currentDocs.filter(d => d.id !== "00000000-0000-0000-0000-000000000002");
       cleanDocs.push(doc);
       const newEncrypted = encryptData(cleanDocs, encryptionKey);
       localStorage.setItem(STORAGE_KEY, newEncrypted);
