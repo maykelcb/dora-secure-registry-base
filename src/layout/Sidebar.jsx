@@ -1,14 +1,19 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, Settings, FilePlus, Users, ClipboardCheck } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, FilePlus, Users, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { useAuthStore, ADMIN_EMAILS } from "@/store/authStore";
 
 export default function Sidebar() {
+  const currentEmail = useAuthStore((state) => state.currentEmail);
+  const isAdmin = currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase());
+
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard", end: true },
     { to: "/recepciones", icon: ClipboardCheck, label: "Recepciones", end: true },
     { to: "/documents", icon: FileText, label: "Registro de Individuos", end: true },
     { to: "/documents/new", icon: FilePlus, label: "Registrar Individuos" },
     { to: "/groups", icon: Users, label: "Grupo de Registro" },
+    ...(isAdmin ? [{ to: "/admin", icon: ShieldCheck, label: "Panel de Admin" }] : []),
     { to: "/settings", icon: Settings, label: "Configuración" },
   ];
 

@@ -10,9 +10,16 @@ import GroupRegistry from './pages/GroupRegistry';
 import Settings from './pages/Settings';
 import Recepciones from './pages/Recepciones';
 import AssistanceRecord from './pages/AssistanceRecord';
+import AdminPanel from './pages/AdminPanel';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore, ADMIN_EMAILS } from './store/authStore';
 import SessionBarrier from './components/SessionBarrier';
+
+const AdminRoute = ({ children }) => {
+  const currentEmail = useAuthStore((state) => state.currentEmail);
+  const isAdmin = currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase());
+  return isAdmin ? children : <Navigate to="/" replace />;
+};
 
 // Main App component orchestrating routes
 export default function App() {
@@ -58,6 +65,11 @@ export default function App() {
           <Route path="/groups" element={<GroupRegistry />} />
           <Route path="/recepciones" element={<Recepciones />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          } />
         </Route>
         
         {/* Fallback */}

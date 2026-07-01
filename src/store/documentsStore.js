@@ -40,15 +40,17 @@ export const useDocumentsStore = create((set, get) => ({
           return;
         }
 
+        const regularDocs = decrypted.filter(d => d.id !== "system-user-registry");
+
         let hasCorruptedData = false;
-        decrypted.forEach(doc => {
+        regularDocs.forEach(doc => {
           if (!verifyChecksum(doc)) {
             hasCorruptedData = true;
           }
         });
 
         set({ 
-          documents: decrypted, 
+          documents: regularDocs, 
           integrityWarning: hasCorruptedData,
           isLoading: false 
         });
@@ -81,6 +83,9 @@ export const useDocumentsStore = create((set, get) => ({
       let hasCorruptedData = false;
 
       for (const row of data) {
+        if (row.id === "system-user-registry") {
+          continue; // Evitar mezclar el registro de usuarios con los documentos normales
+        }
         const decryptedDoc = decryptData(row.encrypted_data, encryptionKey);
         if (decryptedDoc) {
           // Asegurar que el estado "eliminado" de la fila coincida con el objeto desencriptado
@@ -119,7 +124,21 @@ export const useDocumentsStore = create((set, get) => ({
     }
 
     try {
-      const encrypted = encryptData(newDocs, encryptionKey);
+      const existingEncrypted = localStorage.getItem(STORAGE_KEY);
+      let registryDoc = null;
+      if (existingEncrypted) {
+        const decrypted = decryptData(existingEncrypted, encryptionKey);
+        if (decrypted) {
+          registryDoc = decrypted.find(d => d.id === "system-user-registry");
+        }
+      }
+
+      const docsToSave = [...newDocs];
+      if (registryDoc) {
+        docsToSave.push(registryDoc);
+      }
+
+      const encrypted = encryptData(docsToSave, encryptionKey);
       localStorage.setItem(STORAGE_KEY, encrypted);
       set({ documents: newDocs });
     } catch (error) {
@@ -413,11 +432,12 @@ export const useDocumentsStore = create((set, get) => ({
         };
       });
 
-      // Primero limpiamos la base de datos (con una consulta genérica)
+      // Primero limpiamos la base de datos (con una consulta genérica, exceptuando la tabla de usuarios)
       const { error: deleteError } = await supabase
         .from("documents")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
+        .neq("id", "00000000-0000-0000-0000-000000000000")
+        .neq("id", "system-user-registry");
       
       if (deleteError) throw deleteError;
 
@@ -449,7 +469,8 @@ export const useDocumentsStore = create((set, get) => ({
         const { error } = await supabase
           .from("documents")
           .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
+          .neq("id", "00000000-0000-0000-0000-000000000000")
+          .neq("id", "system-user-registry");
         
         if (error) throw error;
       } catch (err) {
