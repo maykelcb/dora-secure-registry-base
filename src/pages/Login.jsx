@@ -234,7 +234,7 @@ export default function Login() {
   const handleOtpComplete = async (code) => {
     setVerifying(true);
     await new Promise((r) => setTimeout(r, 300));
-    const res = verifyOtp(code);
+    const res = await verifyOtp(code);
     setVerifying(false);
 
     if (!res.success) {

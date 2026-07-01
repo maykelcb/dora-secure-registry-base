@@ -68,16 +68,41 @@ export async function saveUserRegistry(usersList) {
 
   if (isSupabaseConfigured()) {
     try {
-      const { error } = await supabase
+      // Verificar si la fila de registro ya existe
+      const { data: existingRow, error: checkError } = await supabase
         .from("documents")
-        .upsert({
-          id: "system-user-registry",
-          encrypted_data: encrypted,
-          eliminado: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
-      if (error) throw error;
+        .select("id")
+        .eq("id", "system-user-registry")
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking system-user-registry existence:", checkError);
+      }
+
+      if (existingRow) {
+        // Actualizar registro existente
+        const { error } = await supabase
+          .from("documents")
+          .update({
+            encrypted_data: encrypted,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", "system-user-registry");
+        if (error) throw error;
+      } else {
+        // Insertar nuevo registro
+        const { error } = await supabase
+          .from("documents")
+          .insert([
+            {
+              id: "system-user-registry",
+              encrypted_data: encrypted,
+              eliminado: false,
+              created_at: new Date().toISOString()
+            }
+          ]);
+        if (error) throw error;
+      }
     } catch (e) {
       console.error("Error saving user registry to Supabase:", e);
     }
@@ -374,7 +399,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   // ── Acción: verificar OTP (segundo paso) ─────────────────────
-  verifyOtp: (inputCode) => {
+  verifyOtp: async (inputCode) => {
     const { otpCode, otpExpiresAt, currentEmail } = get();
     const result = verifyOTP(inputCode, otpCode, otpExpiresAt);
 
@@ -388,6 +413,36 @@ export const useAuthStore = create((set, get) => ({
           lastPing: Date.now()
         })
       );
+
+      // Registrar o actualizar usuario y esperar a que finalice
+      try {
+        const users = await initializeUserRegistryIfNeeded();
+        const emailLower = currentEmail.toLowerCase();
+        let userExists = false;
+        const updatedUsers = users.map(u => {
+          if (u.email.toLowerCase() === emailLower) {
+            userExists = true;
+            return {
+              ...u,
+              lastActive: new Date().toISOString()
+            };
+          }
+          return u;
+        });
+
+        if (!userExists) {
+          const isUserAdmin = ADMIN_EMAILS.includes(emailLower);
+          updatedUsers.push({
+            email: emailLower,
+            role: isUserAdmin ? "admin" : "user",
+            status: "active",
+            lastActive: new Date().toISOString()
+          });
+        }
+        await saveUserRegistry(updatedUsers);
+      } catch (e) {
+        console.error("Error al actualizar registro de usuario en login:", e);
+      }
 
       set({
         isAuthenticated: true,
@@ -406,38 +461,6 @@ export const useAuthStore = create((set, get) => ({
           payload: { email: currentEmail, activeTabId: tabId }
         });
       }
-
-      // Registrar o actualizar usuario en segundo plano
-      (async () => {
-        try {
-          const users = await initializeUserRegistryIfNeeded();
-          const emailLower = currentEmail.toLowerCase();
-          let userExists = false;
-          const updatedUsers = users.map(u => {
-            if (u.email.toLowerCase() === emailLower) {
-              userExists = true;
-              return {
-                ...u,
-                lastActive: new Date().toISOString()
-              };
-            }
-            return u;
-          });
-
-          if (!userExists) {
-            const isUserAdmin = ADMIN_EMAILS.includes(emailLower);
-            updatedUsers.push({
-              email: emailLower,
-              role: isUserAdmin ? "admin" : "user",
-              status: "active",
-              lastActive: new Date().toISOString()
-            });
-          }
-          await saveUserRegistry(updatedUsers);
-        } catch (e) {
-          console.error("Error al actualizar registro de usuario en login:", e);
-        }
-      })();
 
       return { success: true };
     }
