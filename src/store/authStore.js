@@ -171,6 +171,17 @@ export function getSystemEncryptionKey() {
   return "dora-dev-fallback-key-2024-insegura";
 }
 
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const findUserInRegistry = async (email) => {
+  const users = await initializeUserRegistryIfNeeded();
+  const cleanEmail = normalizeEmail(email);
+  return {
+    users,
+    user: users.find((u) => normalizeEmail(u.email) === cleanEmail) || null,
+  };
+};
+
 const getInitialAuth = () => {
   if (typeof window === "undefined") return { isAuthenticated: false, currentEmail: null, sessionExpiresAt: null };
   const activeSessionStr = localStorage.getItem("dora-active-session");
@@ -359,23 +370,26 @@ export const useAuthStore = create((set, get) => ({
   requestOtp: async (email) => {
     set({ isSendingOtp: true });
 
-    // Validar estado del usuario antes de enviar OTP
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = normalizeEmail(email);
     try {
-      const users = await initializeUserRegistryIfNeeded();
-      const user = users.find(u => u.email.toLowerCase() === cleanEmail);
-      if (user) {
-        if (user.status === "blocked") {
-          set({ isSendingOtp: false });
-          return { success: false, message: "Su cuenta ha sido bloqueada. Comuníquese con el administrador." };
-        }
-        if (user.status === "suspended") {
-          set({ isSendingOtp: false });
-          return { success: false, message: "Su cuenta ha sido suspendida. Comuníquese con el administrador." };
-        }
+      const { user } = await findUserInRegistry(cleanEmail);
+      if (!user) {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
+      }
+
+      if (user.status === "blocked") {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Su cuenta ha sido bloqueada. Comuníquese con el administrador." };
+      }
+      if (user.status === "suspended") {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Su cuenta ha sido suspendida. Comuníquese con el administrador." };
       }
     } catch (e) {
       console.error("Error al verificar permisos del usuario:", e);
+      set({ isSendingOtp: false });
+      return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
     }
 
     const { code, expiresAt } = generateOTP();
@@ -403,6 +417,22 @@ export const useAuthStore = create((set, get) => ({
     const result = verifyOTP(inputCode, otpCode, otpExpiresAt);
 
     if (result.valid) {
+      try {
+        const { user } = await findUserInRegistry(currentEmail);
+        if (!user) {
+          return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
+        }
+        if (user.status === "blocked") {
+          return { success: false, message: "Su cuenta ha sido bloqueada. Comuníquese con el administrador." };
+        }
+        if (user.status === "suspended") {
+          return { success: false, message: "Su cuenta ha sido suspendida. Comuníquese con el administrador." };
+        }
+      } catch (e) {
+        console.error("Error al validar autorización del usuario en login:", e);
+        return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
+      }
+
       // Registrar sesión activa
       localStorage.setItem(
         "dora-active-session",
@@ -413,14 +443,11 @@ export const useAuthStore = create((set, get) => ({
         })
       );
 
-      // Registrar o actualizar usuario y esperar a que finalice
       try {
-        const users = await initializeUserRegistryIfNeeded();
+        const { users } = await findUserInRegistry(currentEmail);
         const emailLower = currentEmail.toLowerCase();
-        let userExists = false;
-        const updatedUsers = users.map(u => {
+        const updatedUsers = users.map((u) => {
           if (u.email.toLowerCase() === emailLower) {
-            userExists = true;
             return {
               ...u,
               lastActive: new Date().toISOString()
@@ -428,16 +455,6 @@ export const useAuthStore = create((set, get) => ({
           }
           return u;
         });
-
-        if (!userExists) {
-          const isUserAdmin = ADMIN_EMAILS.includes(emailLower);
-          updatedUsers.push({
-            email: emailLower,
-            role: isUserAdmin ? "admin" : "user",
-            status: "active",
-            lastActive: new Date().toISOString()
-          });
-        }
         await saveUserRegistry(updatedUsers);
       } catch (e) {
         console.error("Error al actualizar registro de usuario en login:", e);
@@ -477,24 +494,24 @@ export const useAuthStore = create((set, get) => ({
 
     set({ isSendingOtp: true });
 
-    // Validar estado antes de reenviar
     try {
-      const users = await fetchUserRegistry();
-      if (users) {
-        const user = users.find(u => u.email.toLowerCase() === currentEmail.toLowerCase());
-        if (user) {
-          if (user.status === "blocked") {
-            set({ isSendingOtp: false });
-            return { success: false, message: "Su cuenta ha sido bloqueada. Comuníquese con el administrador." };
-          }
-          if (user.status === "suspended") {
-            set({ isSendingOtp: false });
-            return { success: false, message: "Su cuenta ha sido suspendida. Comuníquese con el administrador." };
-          }
-        }
+      const { user } = await findUserInRegistry(currentEmail);
+      if (!user) {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
+      }
+      if (user.status === "blocked") {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Su cuenta ha sido bloqueada. Comuníquese con el administrador." };
+      }
+      if (user.status === "suspended") {
+        set({ isSendingOtp: false });
+        return { success: false, message: "Su cuenta ha sido suspendida. Comuníquese con el administrador." };
       }
     } catch (e) {
       console.error(e);
+      set({ isSendingOtp: false });
+      return { success: false, message: "Tu correo no está autorizado. Solicita acceso al administrador." };
     }
 
     const { code, expiresAt } = generateOTP();
@@ -579,12 +596,18 @@ export const useAuthStore = create((set, get) => ({
       if (now - lastStatusCheckTime > 60000) {
         set({ lastStatusCheckTime: now });
         try {
-          const users = await fetchUserRegistry();
+          const { user, users } = await findUserInRegistry(currentEmail);
+          if (!user) {
+            logout();
+            toast.error("Sesión cerrada: Tu correo ya no está autorizado.");
+            return false;
+          }
+
           if (users) {
-            const user = users.find(u => u.email.toLowerCase() === currentEmail.toLowerCase());
-            if (user && (user.status === "blocked" || user.status === "suspended")) {
+            const currentUser = users.find((u) => normalizeEmail(u.email) === normalizeEmail(currentEmail));
+            if (currentUser && (currentUser.status === "blocked" || currentUser.status === "suspended")) {
               logout();
-              toast.error(`Sesión cerrada: Tu cuenta ha sido ${user.status === "blocked" ? "bloqueada" : "suspendida"}.`);
+              toast.error(`Sesión cerrada: Tu cuenta ha sido ${currentUser.status === "blocked" ? "bloqueada" : "suspendida"}.`);
               return false;
             }
           }
