@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useAuthStore, ADMIN_EMAILS } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription
 } from "@/components/ui/card";
@@ -259,6 +260,8 @@ export default function IndividualFormView() {
   const [searchParams] = useSearchParams();
   const queryGrupo = searchParams.get("grupo");
   const { documents, addDocument, updateDocument } = useDocumentsStore();
+  const currentEmail = useAuthStore((state) => state.currentEmail);
+  const isAdmin = Boolean(currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase()));
   const isEditing = !!id;
 
   const currentDoc = useMemo(() => {
@@ -398,6 +401,11 @@ export default function IndividualFormView() {
 
   // Load data if editing
   useEffect(() => {
+    if (isEditing && !isAdmin) {
+      navigate(`/documents/${id}`, { replace: true });
+      return;
+    }
+
     if (isEditing) {
       const doc = documents.find(d => d.id === id);
       if (doc) {
@@ -406,7 +414,7 @@ export default function IndividualFormView() {
         navigate("/documents");
       }
     }
-  }, [id, isEditing, documents, setValue, navigate]);
+  }, [id, isEditing, isAdmin, documents, setValue, navigate]);
 
   const onSubmit = async (data) => {
     // Ensure grupoRegistro is set

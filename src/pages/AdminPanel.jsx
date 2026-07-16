@@ -103,7 +103,7 @@ export default function AdminPanel() {
             Panel de Administración
           </h1>
           <p className="text-muted-foreground mt-1 text-md">
-            Supervisión, registro y control de acceso de usuarios a la plataforma DORA.
+            Supervisión, registro y control de acceso de usuarios a la plataforma RAHU.
           </p>
         </div>
         <div className="shrink-0 bg-primary/10 border border-primary/20 text-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-inner">
@@ -361,7 +361,7 @@ export default function AdminPanel() {
             Al cambiar el estado de un usuario a <strong>Suspendido</strong> o <strong>Bloqueado</strong>, se impedirá inmediatamente cualquier nueva solicitud de código OTP para ese correo.
           </p>
           <p>
-            Si el usuario ya cuenta con una sesión abierta, los mecanismos de seguridad de DORA detectarán el cambio de estado en un plazo máximo de 60 segundos durante su actividad habitual, forzando el cierre inmediato de su sesión.
+            Si el usuario ya cuenta con una sesión abierta, los mecanismos de seguridad de RAHU detectarán el cambio de estado en un plazo máximo de 60 segundos durante su actividad habitual, forzando el cierre inmediato de su sesión.
           </p>
         </div>
       </div>

@@ -70,7 +70,7 @@ export async function sendOtpEmail(toEmail, otpCode) {
       {
         to_email:    toEmail,
         otp_code:    otpCode,
-        app_name:    "DORA Secure Registry",
+        app_name:    "RAHU (Red de asistencia humanitaria)",
         expires_min: "5",
       },
       { publicKey: PUBLIC_KEY }

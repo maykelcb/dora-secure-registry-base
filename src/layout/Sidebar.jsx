@@ -21,7 +21,7 @@ export default function Sidebar() {
     <aside className="w-64 border-r bg-card hidden md:flex flex-col h-full shadow-sm z-10 relative">
       <div className="h-16 flex items-center px-6 border-b">
         <img src="/logo.jpg" alt="Logo" className="w-6 h-6 mr-2 object-contain" />
-        <h1 className="text-2xl font-bold font-serif text-primary tracking-tight">DORA</h1>
+        <h1 className="text-2xl font-bold font-serif text-primary tracking-tight">RAHU</h1>
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map((item) => (
@@ -44,7 +44,7 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="p-4 border-t text-xs text-center text-muted-foreground">
-        DORA Secure Registry <br/>
+        RAHU (Red de asistencia humanitaria) <br/>
         &copy; {new Date().getFullYear()}
       </div>
     </aside>

@@ -12,10 +12,13 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { exportToExcel, exportToCSV } from "@/utils/exporters";
+import { useAuthStore, ADMIN_EMAILS } from "@/store/authStore";
 
 export default function IndividualList() {
   const { documents, deleteDocument, loadDocuments } = useDocumentsStore();
   const navigate = useNavigate();
+  const currentEmail = useAuthStore((state) => state.currentEmail);
+  const isAdmin = Boolean(currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase()));
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
@@ -83,12 +86,16 @@ export default function IndividualList() {
           <ChevronDown className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="text-xs gap-1.5 text-green-700 dark:text-green-400 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={handleExportExcel}>
-            <Download className="w-3.5 h-3.5" /> Excel
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleExportCSV}>
-            <Download className="w-3.5 h-3.5" /> CSV
-          </Button>
+          {isAdmin && (
+            <>
+              <Button variant="outline" size="sm" className="text-xs gap-1.5 text-green-700 dark:text-green-400 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20" onClick={handleExportExcel}>
+                <Download className="w-3.5 h-3.5" /> Excel
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleExportCSV}>
+                <Download className="w-3.5 h-3.5" /> CSV
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => loadDocuments()}>
             <RefreshCw className="w-3.5 h-3.5" />
             Actualizar
@@ -205,12 +212,16 @@ export default function IndividualList() {
                         <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Ver">
                           <Link to={`/documents/${doc.id}`}><Eye className="w-3.5 h-3.5 text-blue-600" /></Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Editar">
-                          <Link to={`/documents/edit/${doc.id}`}><Edit className="w-3.5 h-3.5 text-orange-500" /></Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleDelete(doc.id)} title="Eliminar">
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Editar">
+                              <Link to={`/documents/edit/${doc.id}`}><Edit className="w-3.5 h-3.5 text-orange-500" /></Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => handleDelete(doc.id)} title="Eliminar">
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,6 +1,6 @@
-# DORA - Document Registry & Archive
+# RAHU - Red de asistencia humanitaria
 
-DORA es una aplicación web privada y segura para el registro y gestión de documentos de personas de interés (refugiados, solicitantes de asilo, migrantes), basada en los estándares de categorización documental de ACNUR.
+RAHU es una aplicación web privada y segura para el registro y gestión de documentos de personas de interés (refugiados, solicitantes de asilo, migrantes), basada en los estándares de categorización documental de ACNUR.
 
 ## Características Principales
 

@@ -301,8 +301,8 @@ export default function Login() {
           <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-4 border border-primary/20 shadow-inner overflow-hidden">
             <img src="/logo.jpg" alt="Logo" className="w-10 h-10 object-contain" />
           </div>
-          <h1 className="text-4xl font-serif font-bold text-slate-900 dark:text-white tracking-tight">DORA</h1>
-          <p className="text-muted-foreground mt-2 font-medium">Document Registry &amp; Archive</p>
+          <h1 className="text-4xl font-serif font-bold text-slate-900 dark:text-white tracking-tight">RAHU</h1>
+          <p className="text-muted-foreground mt-2 font-medium">Red de asistencia humanitaria</p>
         </div>
 
         <Card className="w-full max-w-md z-10 border-primary/10 shadow-xl relative overflow-hidden">

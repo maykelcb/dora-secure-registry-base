@@ -24,11 +24,14 @@ import {
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
+import { useAuthStore, ADMIN_EMAILS } from "@/store/authStore";
 
 export default function IndividualDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { documents, deleteDocument } = useDocumentsStore();
+  const currentEmail = useAuthStore((state) => state.currentEmail);
+  const isAdmin = Boolean(currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase()));
 
   const doc = documents.find(d => d.id === id);
   
@@ -103,14 +106,18 @@ export default function IndividualDetail() {
           <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20" onClick={() => navigate(`/documents/${doc.id}/assistance`)}>
             <FileText className="w-4 h-4 mr-2" /> Registrar asistencia
           </Button>
-          <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-950/20" asChild>
-            <Link to={`/documents/edit/${doc.id}`}>
-              <Edit className="w-4 h-4 mr-2" /> Editar
-            </Link>
-          </Button>
-          <Button variant="outline" className="text-destructive border-destructive hover:bg-red-50 dark:hover:bg-red-950/20" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" /> Eliminar
-          </Button>
+          {isAdmin && (
+            <>
+              <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-950/20" asChild>
+                <Link to={`/documents/edit/${doc.id}`}>
+                  <Edit className="w-4 h-4 mr-2" /> Editar
+                </Link>
+              </Button>
+              <Button variant="outline" className="text-destructive border-destructive hover:bg-red-50 dark:hover:bg-red-950/20" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4 mr-2" /> Eliminar
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -433,11 +440,13 @@ export default function IndividualDetail() {
                                 <Eye className="w-4 h-4 text-blue-600" />
                               </Link>
                             </Button>
-                            <Button variant="ghost" size="icon" className="w-8 h-8" asChild title="Editar">
-                              <Link to={`/documents/edit/${member.id}`}>
-                                <Edit className="w-4 h-4 text-orange-500" />
-                              </Link>
-                            </Button>
+                            {isAdmin && (
+                              <Button variant="ghost" size="icon" className="w-8 h-8" asChild title="Editar">
+                                <Link to={`/documents/edit/${member.id}`}>
+                                  <Edit className="w-4 h-4 text-orange-500" />
+                                </Link>
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
