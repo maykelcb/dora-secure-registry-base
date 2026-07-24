@@ -34,6 +34,14 @@ export default function IndividualDetail() {
   const isAdmin = Boolean(currentEmail && ADMIN_EMAILS.includes(currentEmail.toLowerCase()));
 
   const doc = documents.find(d => d.id === id);
+  const getFullName = (d) => {
+    if (!d) return "";
+    const combined = [d.nombreCompleto, d.apellidoCompleto].filter(Boolean).join(" ");
+    if (combined && combined.trim() !== "") return combined;
+    if (d.nombreDocumento) return d.nombreDocumento;
+    if (d.tipoDocumento) return d.tipoDocumento ? d.tipoDocumento.split(" / ")[0] : "";
+    return "";
+  };
   
   // Obtener otros miembros del mismo grupo
   const groupMembers = doc?.grupoRegistro
@@ -126,12 +134,12 @@ export default function IndividualDetail() {
         <div className="bg-gradient-to-r from-primary/5 via-transparent to-transparent p-6 border-b">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-2xl shadow-inner shrink-0">
-                {(doc.nombreCompleto || doc.nombreDocumento || "IN").charAt(0).toUpperCase()}
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-2xl shadow-inner shrink-0">
+                {(getFullName(doc) || "IN").charAt(0).toUpperCase()}
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold font-serif tracking-tight text-foreground">
-                  {doc.nombreCompleto || doc.nombreDocumento || (doc.tipoDocumento ? doc.tipoDocumento.split(" / ")[0] : "Sin nombre")}
+                  {getFullName(doc) || "Sin nombre"}
                 </CardTitle>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5">
@@ -176,7 +184,7 @@ export default function IndividualDetail() {
               
               <div>
                 <span className="text-xs text-muted-foreground block">Nombre Completo</span>
-                <span className="font-medium">{doc.nombreCompleto || doc.nombreDocumento || "—"}</span>
+                <span className="font-medium">{getFullName(doc) || "—"}</span>
               </div>
               
               {doc.nombrePila && (
@@ -424,7 +432,7 @@ export default function IndividualDetail() {
                     {groupMembers.map((member) => (
                       <tr key={member.id} className="border-b hover:bg-muted/10 transition-colors">
                         <td className="py-3 px-4 font-medium text-foreground">
-                          {member.nombreCompleto || member.nombreDocumento || "Sin nombre"}
+                          {getFullName(member) || "Sin nombre"}
                         </td>
                         <td className="py-3 px-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">

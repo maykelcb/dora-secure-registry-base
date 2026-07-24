@@ -11,6 +11,7 @@ import {
 import { useDocumentsStore, generateGrupoRegistro } from "@/store/documentsStore";
 import { COUNTRIES } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
+import toast from "react-hot-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -275,8 +276,30 @@ export default function IndividualFormView() {
     return [...new Set(documents.filter(d => d.grupoRegistro).map(d => d.grupoRegistro))];
   }, [documents]);
 
+  const duplicateDocumentTypes = useMemo(() => new Set(["DNI", "Cédula", "Carnet de Extranjería", "Pasaporte"]), []);
+
+  const findDuplicateDocument = useCallback((data) => {
+    const tipoDocumento = data?.tipoDocumento?.trim();
+    const numeroDocumento = (data?.numeroDocumento ?? "").toString().trim().toLowerCase();
+
+    if (!tipoDocumento || !numeroDocumento || !duplicateDocumentTypes.has(tipoDocumento)) {
+      return null;
+    }
+
+    return documents.find((doc) => {
+      if (!doc || doc.id === id || doc.eliminado) {
+        return false;
+      }
+
+      const existingTipo = (doc.tipoDocumento ?? "").toString().trim();
+      const existingNumero = (doc.numeroDocumento ?? "").toString().trim().toLowerCase();
+
+      return existingTipo === tipoDocumento && existingNumero === numeroDocumento;
+    });
+  }, [documents, duplicateDocumentTypes, id]);
+
   const {
-    register, handleSubmit, control, watch, setValue,
+    register, handleSubmit, control, watch, setValue, setError, clearErrors, setFocus,
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(individualSchema),
@@ -417,6 +440,18 @@ export default function IndividualFormView() {
   }, [id, isEditing, isAdmin, documents, setValue, navigate]);
 
   const onSubmit = async (data) => {
+    clearErrors(["tipoDocumento", "numeroDocumento"]);
+
+    const duplicateDocument = findDuplicateDocument(data);
+    if (!isEditing && duplicateDocument) {
+      const duplicateMessage = "Documento duplicado: ya existe un individuo registrado con este tipo y número.";
+      setError("numeroDocumento", { type: "manual", message: duplicateMessage });
+      setError("tipoDocumento", { type: "manual", message: duplicateMessage });
+      setFocus("numeroDocumento");
+      toast.error(duplicateMessage);
+      return;
+    }
+
     // Ensure grupoRegistro is set
     if (!data.grupoRegistro && data.creacionGrupo === "Crear nuevo grupo") {
       data.grupoRegistro = generateGrupoRegistro();
