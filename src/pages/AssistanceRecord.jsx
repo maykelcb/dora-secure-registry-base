@@ -49,6 +49,12 @@ export default function AssistanceRecord() {
   const { documents } = useDocumentsStore();
   const doc = useMemo(() => documents.find((item) => item.id === id), [documents, id]);
 
+  const autoNumeroRegistro = useMemo(() => {
+    const todayStr = format(new Date(), "yyyyMMdd");
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    return `AST-${todayStr}-${randomDigits}`;
+  }, []);
+
   const { register, handleSubmit, watch } = useForm({
     defaultValues: {
       detallesPlan: "",
@@ -59,7 +65,7 @@ export default function AssistanceRecord() {
       tarjetaDerechos: "",
       tipoTarjetaDerechos: "",
       subTipoTarjetaDerechos: "",
-      numeroRegistro: "",
+      numeroRegistro: autoNumeroRegistro,
       estatusAsistencia: "Entrega Pendiente",
       codigoBarras: "",
       derechosCantidad: "",
@@ -148,7 +154,18 @@ export default function AssistanceRecord() {
 
         <SectionCard icon={MapPin} title="Sección de Entrega" defaultOpen={true}>
           <FormRow cols={2}>
-            <InputArea label="Número del Registro de Asistencia" {...register("numeroRegistro")} />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Número del Registro de Asistencia</Label>
+                <span className="text-[10px] text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">Auto-generado</span>
+              </div>
+              <Input
+                {...register("numeroRegistro")}
+                readOnly
+                disabled
+                className="bg-muted/50 cursor-not-allowed text-xs font-mono font-semibold"
+              />
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Estatus de la Asistencia</Label>
               <Select {...register("estatusAsistencia")}> 
@@ -165,7 +182,22 @@ export default function AssistanceRecord() {
             <InputArea label="Cantidad Entregada" {...register("cantidadEntregada")} />
             <InputArea label="ID Externo" {...register("idExterno")} />
             <InputArea label="Número de personas cubiertas" {...register("numeroPersonasCubiertas")} />
-            <InputArea label="Asistencia Entregada Por" {...register("asistenciaEntregadaPor")} />
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Asistencia Entregada Por</Label>
+              <Select {...register("asistenciaEntregadaPor")}>
+                <option value="">Seleccionar rol / encargado...</option>
+                <option value="Registrador">Registrador</option>
+                <option value="Coordinador">Coordinador</option>
+                <option value="Voluntario">Voluntario</option>
+                <option value="Facilitador">Facilitador</option>
+                <option value="Oficial de Campo">Oficial de Campo</option>
+                <option value="Trabajador Social">Trabajador Social</option>
+                <option value="Administrador">Administrador</option>
+                <option value="Promotor Comunitario">Promotor Comunitario</option>
+                <option value="Socio Implementador">Socio Implementador</option>
+                <option value="Otro">Otro</option>
+              </Select>
+            </div>
             <InputArea label="ID Individual del Recolector" {...register("idIndividualRecolector")} />
             <InputArea label="Fecha Real de Inicio" type="date" {...register("fechaRealInicio")} />
             <InputArea label="Fecha de Entrega" type="date" {...register("fechaEntrega")} />
